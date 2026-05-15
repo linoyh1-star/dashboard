@@ -29,4 +29,4 @@
 האפליקציה מתפרסמת אוטומטית ל-GitHub Pages בכל push ל-`main` דרך
 `.github/workflows/deploy.yml`.
 
-כדי להפעיל את ההפצה לראשונה: ב-GitHub → Settings → Pages → Source: `GitHub Actions`.
+**הפעלה:** ב-GitHub → Settings → Pages → בחרי "GitHub Actions" כ-Source.

@@ -8,6 +8,7 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@latest/dist/xlsx.full.min.js"></script>
 <script src="uploads/leads_embed.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap');
@@ -529,6 +530,39 @@ function LeadsPage({leads,onAdd,onEdit,onDelete,onAddTasks}){
   const [showForm,setShowForm]=useState(false);
   const [editL,setEditL]=useState(null);
   const [viewL,setViewL]=useState(null);
+  const fileInputRef=useRef(null);
+
+  const handleExcelUpload=e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=evt=>{
+      try{
+        const data=new Uint8Array(evt.target.result);
+        const workbook=XLSX.read(data,{type:'array'});
+        const sheet=workbook.Sheets[workbook.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+        const newLeads=rows.map(row=>({
+          id:uid(),
+          name:row['שם ליד']||'',
+          source:row['מקור']||'קמפיין מטא',
+          eventType:row['סוג אירוע']||'רווקות',
+          status:row['סטטוס']||'open',
+          amount:row['הצעת מחיר']?parseInt(row['הצעת מחיר'],10)||0:0,
+          eventDate:row['תאריך האירוע']||'',
+          location:row['מקום']||'',
+          notes:row['הערות']||'',
+          createdAt:row['תאריך']||new Date().toISOString().split('T')[0],
+          lostReason:'',answered:'',advance:0,advanceDone:false,brideName:'',guideName:''
+        })).filter(l=>l.name);
+        newLeads.forEach(onAdd);
+        alert(`הועלו ${newLeads.length} לידים בהצלחה!`);
+        e.target.value='';
+      }catch(err){
+        alert('שגיאה בקריאת הקובץ: '+err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
   const filtered=leads.filter(l=>{
     if(fStatus!=='all'&&l.status!==fStatus)return false;
@@ -566,7 +600,11 @@ function LeadsPage({leads,onAdd,onEdit,onDelete,onAddTasks}){
     <div>
       <div className="ph">
         <div><div className="pt">לידים</div><div className="ps">{filtered.length} לידים{fYear!=='all'?` ב-${fYear}`:''} · {filtered.filter(l=>l.status==='closed').length} נסגרו</div></div>
-        <button className="btn btn-p" onClick={()=>{setEditL(null);setShowForm(true)}}>+ ליד חדש</button>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-p" onClick={()=>{setEditL(null);setShowForm(true)}}>+ ליד חדש</button>
+          <input type="file" accept=".xlsx,.xls" ref={fileInputRef} onChange={handleExcelUpload} style={{display:'none'}}/>
+          <button className="btn btn-s" onClick={()=>fileInputRef.current?.click()}>📥 העלה Excel</button>
+        </div>
       </div>
       <div className="fb">
         <input className="fi" style={{width:180}} placeholder="חיפוש..." value={search} onChange={e=>setSearch(e.target.value)}/>

@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דשבורד עסקי</title>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="uploads/leads_embed.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f1;--surface:#fff;--surface2:#f0ede8;--border:#e8e3db;
+  --text:#1a1714;--text2:#6b6560;--text3:#a09890;
+  --accent:oklch(50% 0.19 22);--accentbg:oklch(97% 0.04 22);
+  --green:oklch(50% 0.15 145);--greenbg:oklch(96% 0.04 145);
+  --red:oklch(50% 0.18 20);--redbg:oklch(97% 0.04 20);
+  --yellow:oklch(60% 0.17 80);--yellowbg:oklch(97% 0.04 80);
+  --blue:oklch(50% 0.17 240);--bluebg:oklch(96% 0.04 240);
+  --r:12px;--shadow:0 1px 3px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.04);
+}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+#root{min-height:100vh}
+.app{display:flex;min-height:100vh}
+.sidebar{width:216px;background:#1a1714;color:#fff;display:flex;flex-direction:column;position:fixed;top:0;right:0;bottom:0;z-index:100}
+.sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,.09)}
+.sidebar-logo h1{font-size:14px;font-weight:700;color:#fff;line-height:1.4}
+.sidebar-logo p{font-size:11px;color:rgba(255,255,255,.35);margin-top:3px}
+.sidebar-nav{padding:10px 0;flex:1;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 20px;cursor:pointer;font-size:13px;font-weight:500;color:rgba(255,255,255,.55);border-right:2px solid transparent;transition:all .15s}
+.nav-item:hover{color:rgba(255,255,255,.9);background:rgba(255,255,255,.05)}
+.nav-item.active{color:#fff;background:rgba(255,255,255,.09);border-right-color:var(--accent);font-weight:600}
+.nav-icon{width:16px;height:16px;opacity:.7;flex-shrink:0}
+.nav-item.active .nav-icon{opacity:1}
+.sidebar-foot{padding:14px 20px;border-top:1px solid rgba(255,255,255,.07);font-size:11px;color:rgba(255,255,255,.25)}
+.main{margin-right:216px;flex:1;padding:28px 32px;max-width:calc(100vw - 216px);min-height:100vh}
+.ph{margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.pt{font-size:20px;font-weight:800;letter-spacing:-.2px}
+.ps{font-size:12px;color:var(--text2);margin-top:2px}
+.card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--shadow)}
+.ch{padding:15px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.ct{font-size:13.5px;font-weight:700}
+.cb{padding:18px}
+.kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.kcard{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:18px;box-shadow:var(--shadow)}
+.klabel{font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px}
+.kval{font-size:26px;font-weight:800;margin:6px 0 3px;letter-spacing:-.5px}
+.ksub{font-size:11px;color:var(--text3);line-height:1.4}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px}
+.g21{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:18px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:right;padding:9px 13px;font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);background:var(--surface2);white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.bg{background:var(--greenbg);color:var(--green)}
+.br{background:var(--redbg);color:var(--red)}
+.by{background:var(--yellowbg);color:#9a6d08}
+.bb{background:var(--bluebg);color:var(--blue)}
+.bgr{background:var(--surface2);color:var(--text2)}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:'Heebo',sans-serif;white-space:nowrap}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{filter:brightness(1.1)}
+.btn-s{background:var(--surface);color:var(--text);border:1px solid var(--border)}.btn-s:hover{background:var(--surface2)}
+.btn-g{background:transparent;color:var(--text2);border:1px solid transparent}.btn-g:hover{background:var(--surface2);color:var(--text)}
+.btn-sm{padding:4px 11px;font-size:12px;border-radius:6px}
+.btn-icon{padding:5px 8px;font-size:12px;border-radius:6px}
+.fi{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'Heebo',sans-serif;background:var(--surface);color:var(--text);outline:none;direction:rtl;transition:border-color .15s}
+.fi:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accentbg)}
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:11.5px;font-weight:700;color:var(--text2);margin-bottom:5px}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.fb{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:18px}
+.tab{padding:9px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--surface);border-radius:16px;width:100%;max-width:660px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.25)}
+.mh{padding:20px 22px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:1;border-radius:16px 16px 0 0}
+.mt{font-size:16px;font-weight:700}
+.mb{padding:22px}
+.mf{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:9px}
+.xbtn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;font-size:18px;color:var(--text2);background:none;border:none;transition:background .15s;line-height:1}
+.xbtn:hover{background:var(--surface2)}
+.sec{font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.pbar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:3px}
+.pf{height:100%;border-radius:3px;transition:width .6s}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:5px;flex-shrink:0}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.reminder-banner{background:oklch(97% .04 80);border:1px solid oklch(88% .08 80);border-radius:10px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:flex-start;gap:12px}
+.insight-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:10px}
+.insight-action{background:var(--accentbg);border-radius:7px;padding:10px 12px;font-size:12px;color:var(--text2);line-height:1.6;margin-top:8px;border-right:3px solid var(--accent)}
+.event-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;cursor:pointer;transition:box-shadow .15s}
+.event-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.09)}
+.edate-box{background:var(--accentbg);border:1px solid oklch(91% .05 22);border-radius:8px;padding:8px 10px;text-align:center;min-width:50px;flex-shrink:0}
+.edate-day{font-size:20px;font-weight:800;color:var(--accent);line-height:1}
+.edate-mon{font-size:10px;color:var(--text2);margin-top:2px;font-weight:600}
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:9px;display:flex;gap:12px;align-items:flex-start;transition:box-shadow .15s}
+.task-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.07)}
+.task-card.done-task{opacity:.45}
+.section-divider{background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;margin-top:20px}
+.tweaks-panel{position:fixed;bottom:18px;left:18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;width:230px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:500}
+.bal-box{background:var(--surface2);border-radius:10px;padding:14px 16px;margin-top:14px}
+.bal-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.bal-row:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useMemo} = React;
+
+// ── CONSTANTS ────────────────────────────────────────────────────
+const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+const SOURCES=['פייסבוק אורגני','אינסטגרם אורגני','מפה לאוזן','קמפיין מטא','אתר שלי','אחר'];
+const EVENT_TYPES=['רווקות','יומולדת','הרמת כוסית','קבוצה מאורגנת','מקווה','אירוע חברה','יום גיבוש','אחר'];
+const SRC_HEX={'פייסבוק אורגני':'#3b5998','אינסטגרם אורגני':'#c13584','מפה לאוזן':'#2d8a5e','קמפיין מטא':'#c85c3a','אתר שלי':'#2d7fa8','אחר':'#888'};
+const SRC_CSS={'פייסבוק אורגני':'oklch(50% .19 240)','אינסטגרם אורגני':'oklch(52% .2 330)','מפה לאוזן':'oklch(50% .15 145)','קמפיין מטא':'oklch(50% .19 22)','אתר שלי':'oklch(50% .17 200)','אחר':'oklch(55% .04 0)'};
+const TYPE_CSS={'רווקות':'oklch(52% .2 330)','יומולדת':'oklch(60% .17 80)','הרמת כוסית':'oklch(50% .15 145)','קבוצה מאורגנת':'oklch(50% .17 200)','מקווה':'oklch(50% .19 240)','אירוע חברה':'oklch(50% .19 22)','יום גיבוש':'oklch(55% .14 160)','אחר':'oklch(55% .04 0)'};
+const TASK_CATS=['פולו אפ','אירוע קרוב','הצעת מחיר','שיווק','כללי'];
+const CAT_CSS={'פולו אפ':'var(--blue)','אירוע קרוב':'var(--green)','הצעת מחיר':'var(--accent)','שיווק':'oklch(52% .2 330)','כללי':'var(--text2)'};
+const REVENUE_2025=[0,0,0,0,0,0,0,0,0,0,0,0];
+const INSIGHT_MAP={
+  'חוסר מענה':{title:'חוסר מענה — הזדמנות לשיפור',action:'שלחי הודעת WhatsApp תוך שעה מרגע הפנייה. הוסיפי פולו אפ ידני לאחר 48 שעות. לידים ממטא דורשים מענה תוך שעה — כל שעת עיכוב מורידה את סיכויי הסגירה.',color:'oklch(50% .17 240)'},
+  'מחיר':{title:'מחיר — גמישות וחבילות',action:'הציגי 2-3 חבילות מדורגות. ודאי שהצעת המחיר כוללת פירוט ערך ברור. לעיתים הבעיה אינה המחיר אלא ההצדקה — הראי עבודות קודמות בשיחה.',color:'oklch(50% .19 22)'},
+  'תאריכים חופפים':{title:'תאריכים חופפים — ניהול יומן',action:'צרי רשימת המתנה. שקלי לרשום לידים נוספים לאותו תאריך מתוך ידיעה שיתכנו ביטולים. המלצי על קולגות לימים תפוסים — יוצר מוניטין.',color:'oklch(52% .2 330)'},
+  'חוסר רלוונטיות':{title:'לידים לא רלוונטיים — מיקוד קמפיין',action:'בדקי הגדרות קמפיין — גיל, תחומי עניין, מיקום. לידים לא רלוונטיים מבזבזים תקציב. שקלי הוספת שאלון קצר בלינק ביו לסינון מוקדם.',color:'oklch(50% .15 145)'},
+  'אני לא יכולתי':{title:'אי-זמינות — ניהול לוח זמנים',action:'סמני ימים חסומים ביומן מראש. שקלי להציג תאריכים פנויים בסטוריז פרואקטיבית — לקוחות שיודעים מתי את פנויה ייצרו קשר בזמן.',color:'oklch(55% .14 160)'},
+  'חוסר רצינות':{title:'לידים לא רציניים — סינון מוקדם',action:'הוסיפי שאלון קצר לפני שיחה (תאריך, מספר אנשים, תקציב). זה מסנן לידים לא רציניים וחוסך זמן יקר.',color:'oklch(60% .17 80)'},
+  'מצב ביטחוני':{title:'מצב ביטחוני — גורם חיצוני',action:'גורם שאינו בשליטתך. שמרי קשר עם לידים אלו — חלקם יחזרו. שלחי עדכון חיובי כשהתנאים מאפשרים.',color:'oklch(55% .04 0)'},
+};
+
+function uid(){return Math.random().toString(36).slice(2,9)}
+function fmt(d){try{return new Date(d).toLocaleDateString('he-IL')}catch{return d||'—'}}
+function fmtFull(d){try{return new Date(d).toLocaleDateString('he-IL',{day:'2-digit',month:'long',year:'numeric'})}catch{return d}}
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().split('T')[0]}
+
+// ── STORAGE ──────────────────────────────────────────────────────
+const load=(k,def)=>{try{const s=localStorage.getItem(k);return s?JSON.parse(s):def}catch{return def}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+
+// Available years: all years in data + current year + always show next year
+function getYears(leads){
+  const now=new Date();
+  const cy=now.getFullYear();
+  const fromData=[...new Set(leads.map(l=>parseInt(l.createdAt?.slice(0,4)||cy)))].filter(Boolean);
+  const all=new Set([...fromData,cy]);
+  return [...all].sort((a,b)=>b-a);
+}
+
+// ── SVG ICONS ────────────────────────────────────────────────────
+const Icons={
+  dashboard:()=><svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>,
+  leads:()=><svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-2.76 2.24-5 5-5"/><circle cx="12.5" cy="10.5" r="3"/><path d="M12.5 9v1.5l1 1"/></svg>,
+  events:()=><svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>,
+  analytics:()=><svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 13l4-5 3 3 4-6 3 3"/></svg>,
+  tasks:()=><svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 4h8M6 8h8M6 12h8"/><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/></svg>,
+};
+
+// ── CHARTS ───────────────────────────────────────────────────────
+function BarChart({data,labels,colors,height=160}){
+  const ref=useRef();const ch=useRef();
+  useEffect(()=>{
+    if(!ref.current)return;ch.current?.destroy();
+    ch.current=new Chart(ref.current,{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors||data.map(()=>'oklch(50% .19 22 / .8)'),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{family:'Heebo',size:11}}},y:{grid:{color:'#f0ede8'},ticks:{font:{family:'Heebo',size:11}},beginAtZero:true}}}});
+    return()=>ch.current?.destroy();
+  },[JSON.stringify(data),JSON.stringify(labels)]);
+  return <div style={{height}}><canvas ref={ref}/></div>;
+}
+function LineChart({datasets,labels,height=190}){
+  const ref=useRef();const ch=useRef();
+  useEffect(()=>{
+    if(!ref.current)return;ch.current?.destroy();
+    ch.current=new Chart(ref.current,{type:'line',data:{labels,datasets:datasets.map(d=>({...d,tension:.4,pointRadius:3,borderWidth:2.5,fill:d.fill||false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Heebo',size:11},boxWidth:10,padding:10}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Heebo',size:11}}},y:{grid:{color:'#f0ede8'},ticks:{font:{family:'Heebo',size:11}},beginAtZero:true}}}});
+    return()=>ch.current?.destroy();
+  },[JSON.stringify(datasets),JSON.stringify(labels)]);
+  return <div style={{height}}><canvas ref={ref}/></div>;
+}
+function DonutChart({data,labels,colors,height=190}){
+  const ref=useRef();const ch=useRef();
+  useEffect(()=>{
+    if(!ref.current)return;ch.current?.destroy();
+    ch.current=new Chart(ref.current,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{font:{family:'Heebo',size:11},boxWidth:10,padding:8}}}}});
+    return()=>ch.current?.destroy();
+  },[JSON.stringify(data)]);
+  return <div style={{height}}><canvas ref={ref}/></div>;
+}
+
+// ── SMALL COMPONENTS ─────────────────────────────────────────────
+function SBadge({status}){
+  const m={closed:['bg','נסגר'],lost:['br','לא נסגר'],follow:['by','פולו אפ'],open:['bb','פתוח']};
+  const [c,l]=m[status]||['bgr',status];
+  return <span className={`badge ${c}`}>{l}</span>;
+}
+function SourceDot({source}){
+  return <span style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:13}}>
+    <span className="dot" style={{background:SRC_CSS[source]||'#ccc'}}/>{source}
+  </span>;
+}
+function TrendArrow({val}){
+  if(val===null||val===undefined)return null;
+  return <span style={{fontSize:11,fontWeight:700,color:val>0?'var(--green)':val<0?'var(--red)':'var(--text3)',marginRight:4}}>
+    {val>0?'↑':val<0?'↓':'→'}{Math.abs(val)}%
+  </span>;
+}
+
+// ── REMINDER BANNER ──────────────────────────────────────────────
+function ReminderBanner({leads}){
+  const [dismissed,setDismissed]=useState(()=>load('biz_dismissed',[]));
+  const now=new Date();
+  const soon=leads.filter(l=>{
+    if(l.status!=='closed'||!l.eventDate)return false;
+    const diff=Math.ceil((new Date(l.eventDate)-now)/86400000);
+    return diff>=0&&diff<=7&&!dismissed.includes(l.id+'_remind');
+  }).sort((a,b)=>new Date(a.eventDate)-new Date(b.eventDate));
+  if(!soon.length)return null;
+  const dismiss=id=>{const d=[...dismissed,id+'_remind'];setDismissed(d);save('biz_dismissed',d)};
+  return <div style={{marginBottom:20}}>
+    {soon.map(l=>{
+      const days=Math.ceil((new Date(l.eventDate)-now)/86400000);
+      return <div key={l.id} className="reminder-banner">
+        <div style={{fontSize:20}}>🔔</div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,color:'#7a5208',fontSize:13}}>
+            {days===0?'היום!':days===1?'מחר —':`עוד ${days} ימים —`} {l.brideName||l.name} · {l.eventType}
+          </div>
+          <div style={{color:'#7a5208',fontSize:12,marginTop:2}}>{fmtFull(l.eventDate)}{l.location?` · ${l.location}`:''} — שלחי הודעה לחתן ווידאי מילוי שאלונים</div>
+        </div>
+        <button className="btn btn-sm" style={{background:'oklch(88% .08 80)',color:'#7a5208',border:'none',cursor:'pointer'}} onClick={()=>dismiss(l.id)}>סגור</button>
+      </div>;
+    })}
+  </div>;
+}
+
+// ── LEAD FORM (unified with event fields) ────────────────────────
+function LeadFormModal({lead,onSave,onClose}){
+  const blank={name:'',source:'קמפיין מטא',answered:'',eventType:'רווקות',status:'open',lostReason:'',
+    amount:0,advance:0,advanceDone:false,eventDate:'',location:'',notes:'',
+    createdAt:new Date().toISOString().split('T')[0],brideName:'',guideName:''};
+  const [f,setF]=useState(lead||blank);
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const balance=f.advanceDone?(f.amount-(f.advance||0)):f.amount;
+  return(
+    <div className="modal-ov" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="mh"><span className="mt">{lead?'עריכת ליד':'ליד חדש'}</span><button className="xbtn" onClick={onClose}>×</button></div>
+        <form onSubmit={e=>{e.preventDefault();onSave({...f,id:f.id||uid()})}}>
+          <div className="mb">
+            <div className="sec">פרטי ליד</div>
+            <div className="fg2">
+              <div className="fg"><label className="fl">שם ליד *</label><input className="fi" value={f.name} onChange={e=>s('name',e.target.value)} required/></div>
+              <div className="fg"><label className="fl">מקור</label><select className="fi" value={f.source} onChange={e=>s('source',e.target.value)}>{SOURCES.map(x=><option key={x}>{x}</option>)}</select></div>
+              <div className="fg"><label className="fl">סוג אירוע</label><select className="fi" value={f.eventType} onChange={e=>s('eventType',e.target.value)}>{EVENT_TYPES.map(x=><option key={x}>{x}</option>)}</select></div>
+              <div className="fg"><label className="fl">סטטוס</label>
+                <select className="fi" value={f.status} onChange={e=>s('status',e.target.value)}>
+                  <option value="open">פתוח</option><option value="follow">פולו אפ</option>
+                  <option value="closed">נסגר</option><option value="lost">לא נסגר</option>
+                </select>
+              </div>
+              <div className="fg"><label className="fl">ענה/לא ענה</label><input className="fi" value={f.answered} onChange={e=>s('answered',e.target.value)} placeholder="ענתה / לא ענתה"/></div>
+              <div className="fg"><label className="fl">תאריך פניה</label><input type="date" className="fi" value={f.createdAt} onChange={e=>s('createdAt',e.target.value)}/></div>
+            </div>
+            {f.status==='lost'&&<div className="fg"><label className="fl">סיבת אי-סגירה</label><input className="fi" value={f.lostReason} onChange={e=>s('lostReason',e.target.value)}/></div>}
+
+            {/* Basic event fields shown for all statuses */}
+            {f.status!=='closed'&&<>
+              <div className="sec" style={{marginTop:2}}>פרטי האירוע (אופציונלי)</div>
+              <div className="fg2">
+                <div className="fg"><label className="fl">שם הכלה / מוזמן</label><input className="fi" value={f.brideName||''} onChange={e=>s('brideName',e.target.value)} placeholder="שם הכלה"/></div>
+                <div className="fg"><label className="fl">תאריך האירוע</label><input type="date" className="fi" value={f.eventDate||''} onChange={e=>s('eventDate',e.target.value)}/></div>
+                <div className="fg"><label className="fl">מקום האירוע</label><input className="fi" value={f.location||''} onChange={e=>s('location',e.target.value)} placeholder="אולם, גן..."/></div>
+                <div className="fg"><label className="fl">הצעת מחיר (₪)</label><input type="number" className="fi" value={f.amount||0} onChange={e=>s('amount',+e.target.value)} min={0}/></div>
+              </div>
+            </>}
+
+            {f.status==='closed'&&<>
+              <div className="sec" style={{marginTop:6}}>פרטי האירוע</div>
+              <div className="fg2">
+                <div className="fg"><label className="fl">שם המלווה</label><input className="fi" value={f.guideName||''} onChange={e=>s('guideName',e.target.value)} placeholder="שמך"/></div>
+                <div className="fg"><label className="fl">שם הכלה / מוזמן ראשי</label><input className="fi" value={f.brideName||''} onChange={e=>s('brideName',e.target.value)}/></div>
+                <div className="fg"><label className="fl">תאריך האירוע</label><input type="date" className="fi" value={f.eventDate} onChange={e=>s('eventDate',e.target.value)}/></div>
+                <div className="fg"><label className="fl">מיקום</label><input className="fi" value={f.location} onChange={e=>s('location',e.target.value)} placeholder="אולם, גן, כתובת..."/></div>
+              </div>
+              <div className="sec" style={{marginTop:2}}>תשלומים</div>
+              <div className="fg3">
+                <div className="fg"><label className="fl">סכום כולל לתשלום (₪)</label><input type="number" className="fi" value={f.amount} onChange={e=>s('amount',+e.target.value)} min={0}/></div>
+                <div className="fg"><label className="fl">מקדמה (₪)</label><input type="number" className="fi" value={f.advance||0} onChange={e=>s('advance',+e.target.value)} min={0}/></div>
+                <div className="fg">
+                  <label className="fl">יתרה לתשלום</label>
+                  <div style={{padding:'8px 12px',background:balance>0?'var(--redbg)':'var(--greenbg)',border:`1px solid ${balance>0?'oklch(88% .06 20)':'oklch(88% .06 145)'}`,borderRadius:8,fontWeight:700,color:balance>0?'var(--red)':'var(--green)',fontSize:15}}>
+                    ₪{balance.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <label style={{display:'flex',gap:8,alignItems:'center',cursor:'pointer',fontSize:13,marginBottom:14}}>
+                <input type="checkbox" checked={f.advanceDone||false} onChange={e=>s('advanceDone',e.target.checked)} style={{width:16,height:16}}/>
+                מקדמה שולמה — לנכות מהיתרה
+              </label>
+            </>}
+
+            <div className="fg"><label className="fl">הערות</label><textarea className="fi" rows={2} value={f.notes} onChange={e=>s('notes',e.target.value)} style={{resize:'vertical'}}/></div>
+          </div>
+          <div className="mf"><button type="submit" className="btn btn-p">שמור</button><button type="button" className="btn btn-s" onClick={onClose}>ביטול</button></div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── EVENT DETAIL MODAL ───────────────────────────────────────────
+function EventDetailModal({lead,onEdit,onClose}){
+  const d=lead.eventDate?new Date(lead.eventDate):null;
+  const total=lead.amount||0;
+  const advance=lead.advance||0;
+  const balance=lead.advanceDone?(total-advance):total;
+  return(
+    <div className="modal-ov" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:500}}>
+        <div className="mh"><span className="mt">{lead.name}</span><button className="xbtn" onClick={onClose}>×</button></div>
+        <div className="mb">
+          {[['כלה / מוזמן',lead.brideName||lead.name],['מלווה',lead.guideName||'—'],['סוג אירוע',lead.eventType],['תאריך',d?fmtFull(lead.eventDate):'—'],['מיקום',lead.location||'—'],['מקור',lead.source]].map(([k,v])=>(
+            <div key={k} style={{display:'flex',gap:10,padding:'9px 0',borderBottom:'1px solid var(--border)',alignItems:'baseline'}}>
+              <span style={{fontWeight:600,fontSize:13,color:'var(--text2)',minWidth:110}}>{k}</span>
+              <span style={{fontSize:13}}>{v}</span>
+            </div>
+          ))}
+          <div className="bal-box">
+            <div className="sec" style={{marginBottom:8}}>תשלומים</div>
+            <div className="bal-row"><span>סכום כולל</span><span style={{fontWeight:700}}>₪{total.toLocaleString()}</span></div>
+            <div className="bal-row"><span>מקדמה</span><span style={{fontWeight:600,color:lead.advanceDone?'var(--green)':'var(--yellow)'}}>{lead.advanceDone?`₪${advance.toLocaleString()} (שולמה)`:`₪${advance.toLocaleString()} (טרם שולמה)`}</span></div>
+            <div className="bal-row"><span style={{fontWeight:700}}>יתרה לתשלום</span><span style={{fontWeight:800,fontSize:16,color:balance>0?'var(--red)':'var(--green)'}}>₪{balance.toLocaleString()}</span></div>
+          </div>
+          {lead.notes&&<div style={{marginTop:12,fontSize:13,color:'var(--text2)',lineHeight:1.6}}><strong>הערות:</strong> {lead.notes}</div>}
+          {d&&<div style={{marginTop:14}}>
+            <button className="btn btn-s btn-sm" onClick={()=>{
+              const url=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(lead.eventType+' — '+(lead.brideName||lead.name))}&dates=${d.toISOString().replace(/[-:]/g,'').split('.')[0]}Z/${d.toISOString().replace(/[-:]/g,'').split('.')[0]}Z&location=${encodeURIComponent(lead.location||'')}`;
+              window.open(url,'_blank');
+            }}>שריין ב-Google Calendar</button>
+          </div>}
+        </div>
+        <div className="mf"><button className="btn btn-p btn-sm" onClick={onEdit}>עריכה</button><button className="btn btn-g btn-sm" onClick={onClose}>סגור</button></div>
+      </div>
+    </div>
+  );
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────────
+function Dashboard({leads}){
+  const now=new Date();
+  const cy=now.getFullYear().toString();
+  const years=getYears(leads);
+  const [selYear,setSelYear]=useState(cy);
+
+  const filtered=selYear==='הכל'?leads:leads.filter(l=>l.createdAt?.startsWith(selYear));
+  const closed=filtered.filter(l=>l.status==='closed');
+  const lost=filtered.filter(l=>l.status==='lost');
+  const totalRev=selYear==='2025'?REVENUE_2025.reduce((s,v)=>s+v,0):closed.reduce((s,l)=>s+(l.amount||0),0);
+  const conv=filtered.length?Math.round(closed.length/filtered.length*100):0;
+
+  // Monthly chart
+  const mLabels=MONTHS.map(m=>m.slice(0,3));
+  const mLeads=Array(12).fill(0);const mClosed=Array(12).fill(0);const mRev=Array(12).fill(0);
+  filtered.forEach(l=>{const m=new Date(l.createdAt).getMonth();if(m>=0&&m<12){mLeads[m]++;if(l.status==='closed'){mClosed[m]++;}}});
+  if(selYear==='2025')REVENUE_2025.forEach((v,i)=>{mRev[i]=v});
+  else closed.forEach(l=>{const m=new Date(l.createdAt).getMonth();if(m>=0&&m<12)mRev[m]+=(l.amount||0)});
+
+  // Sources
+  const srcEntries=SOURCES.map(s=>({s,n:filtered.filter(l=>l.source===s).length})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n);
+
+  // This month events
+  const msStart=new Date(now.getFullYear(),now.getMonth(),1);
+  const msEnd=new Date(now.getFullYear(),now.getMonth()+1,0);
+  const thisMonthEvs=leads.filter(l=>l.status==='closed'&&l.eventDate).filter(l=>{const d=new Date(l.eventDate);return d>=msStart&&d<=msEnd}).sort((a,b)=>new Date(a.eventDate)-new Date(b.eventDate));
+
+  // YoY comparison
+  const getYS=y=>{
+    const yl=leads.filter(l=>l.createdAt?.startsWith(y));
+    const cl=yl.filter(l=>l.status==='closed');
+    const rev=y==='2025'?REVENUE_2025.reduce((s,v)=>s+v,0):cl.reduce((s,l)=>s+(l.amount||0),0);
+    return{total:yl.length,closed:cl.length,lost:yl.filter(l=>l.status==='lost').length,rev,conv:yl.length?Math.round(cl.length/yl.length*100):0,avg:cl.length?Math.round(rev/cl.length):0};
+  };
+  const allYears=[...years].sort((a,b)=>a-b).map(String).filter(y=>y!=='הכל');
+  const yoyRows=allYears.map((y,i)=>{
+    const curr=getYS(y);
+    const prev=i>0?getYS(allYears[i-1]):null;
+    const revGrowth=prev&&prev.rev>0?Math.round((curr.rev-prev.rev)/prev.rev*100):null;
+    const leadsGrowth=prev&&prev.total>0?Math.round((curr.total-prev.total)/prev.total*100):null;
+    return{y,curr,revGrowth,leadsGrowth};
+  });
+
+  // Best/worst month
+  const nonZeroRev=mRev.map((v,i)=>({v,i})).filter(x=>x.v>0);
+  const bestMonth=nonZeroRev.length?nonZeroRev.reduce((a,b)=>b.v>a.v?b:a):null;
+
+  return(
+    <div>
+      <ReminderBanner leads={leads}/>
+      <div className="ph">
+        <div><div className="pt">דשבורד</div><div className="ps">סקירה כללית</div></div>
+        <select className="fi" style={{width:130}} value={selYear} onChange={e=>setSelYear(e.target.value)}>
+          <option value="הכל">כל הזמנים</option>
+          {years.map(y=><option key={y} value={String(y)}>{y}</option>)}
+        </select>
+      </div>
+
+      <div className="kgrid">
+        <div className="kcard"><div className="klabel">לידים</div><div className="kval">{filtered.length}</div><div className="ksub">{closed.length} נסגרו · {lost.length} לא נסגרו</div></div>
+        <div className="kcard"><div className="klabel">יחס המרה</div><div className="kval" style={{color:'var(--accent)'}}>{conv}%</div><div className="ksub">{closed.length} עסקאות</div></div>
+        <div className="kcard"><div className="klabel">הכנסות</div><div className="kval" style={{color:'var(--green)'}}>₪{(totalRev/1000).toFixed(0)}K</div><div className="ksub">ממוצע ₪{closed.length?Math.round(totalRev/closed.length).toLocaleString():0}</div></div>
+        <div className="kcard"><div className="klabel">אירועי {MONTHS[now.getMonth()]}</div><div className="kval">{thisMonthEvs.length}</div><div className="ksub">{thisMonthEvs.filter(l=>new Date(l.eventDate)>=now).length} עדיין קרובים</div></div>
+      </div>
+
+      <div className="g2">
+        <div className="card"><div className="ch"><span className="ct">לידים וסגירות</span></div><div className="cb">
+          <LineChart height={190} labels={mLabels} datasets={[{label:'לידים',data:mLeads,borderColor:'oklch(50% .17 200)',backgroundColor:'oklch(94% .04 200)'},{label:'נסגרו',data:mClosed,borderColor:'oklch(50% .15 145)'}]}/>
+        </div></div>
+        <div className="card"><div className="ch"><span className="ct">מקורות</span></div><div className="cb">
+          <DonutChart height={190} data={srcEntries.map(x=>x.n)} labels={srcEntries.map(x=>x.s)} colors={srcEntries.map(x=>SRC_HEX[x.s]||'#aaa')}/>
+        </div></div>
+      </div>
+
+      <div className="g21">
+        <div className="card"><div className="ch"><span className="ct">הכנסות חודשיות (₪)</span>{bestMonth&&<span style={{fontSize:12,color:'var(--text2)'}}>שיא: <strong>{MONTHS[bestMonth.i]}</strong> ₪{bestMonth.v.toLocaleString()}</span>}</div><div className="cb">
+          <BarChart height={150} labels={mLabels} data={mRev} colors={mRev.map(v=>v>0?'oklch(50% .19 22 / .85)':'oklch(50% .19 22 / .12)')}/>
+        </div></div>
+        <div className="card"><div className="ch"><span className="ct">אירועי {MONTHS[now.getMonth()]}</span></div>
+          <div className="cb" style={{padding:'10px 14px'}}>
+            {thisMonthEvs.length===0&&<p style={{color:'var(--text3)',fontSize:13}}>אין אירועים החודש</p>}
+            {thisMonthEvs.map(l=>{
+              const d=new Date(l.eventDate);const isPast=d<now;
+              return <div key={l.id} style={{display:'flex',gap:10,alignItems:'center',padding:'8px 0',borderBottom:'1px solid var(--border)',opacity:isPast?.6:1}}>
+                <div className="edate-box" style={isPast?{background:'var(--surface2)',borderColor:'var(--border)'}:{}}>
+                  <div className="edate-day" style={isPast?{color:'var(--text3)'}:{}}>{d.getDate()}</div>
+                  <div className="edate-mon">{MONTHS[d.getMonth()].slice(0,3)}</div>
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:600,fontSize:13}}>{l.brideName||l.name}</div>
+                  <div style={{fontSize:11,color:'var(--text2)'}}>{l.eventType}{l.location?` · ${l.location}`:''}</div>
+                </div>
+                {isPast?<span className="badge bgr">עבר</span>:<span style={{fontSize:11,color:'var(--accent)',fontWeight:700}}>{Math.ceil((d-now)/86400000)}י'</span>}
+              </div>;
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Year-over-year comparison */}
+      {allYears.length>1&&<div className="card" style={{marginBottom:18}}>
+        <div className="ch"><span className="ct">השוואה שנתית</span></div>
+        <div style={{overflowX:'auto'}}><table>
+          <thead><tr><th>שנה</th><th>לידים</th><th>צמיחה</th><th>נסגרו</th><th>המרה</th><th>הכנסות</th><th>צמיחה הכנסות</th><th>ממוצע עסקה</th></tr></thead>
+          <tbody>{yoyRows.map(({y,curr,revGrowth,leadsGrowth})=>(
+            <tr key={y}>
+              <td style={{fontWeight:800,fontSize:15}}>{y}</td>
+              <td style={{fontWeight:600}}>{curr.total}</td>
+              <td><TrendArrow val={leadsGrowth}/></td>
+              <td style={{color:'var(--green)',fontWeight:600}}>{curr.closed}</td>
+              <td><span style={{fontWeight:700,color:curr.conv>40?'var(--green)':curr.conv>25?'var(--yellow)':'var(--red)'}}>{curr.conv}%</span></td>
+              <td style={{fontWeight:700,color:'var(--accent)'}}>₪{curr.rev.toLocaleString()}</td>
+              <td><TrendArrow val={revGrowth}/></td>
+              <td>₪{curr.avg.toLocaleString()}</td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      </div>}
+
+      {/* Monthly breakdown for selected year */}
+      {(()=>{
+        const yr=selYear==='הכל'?cy:selYear;
+        const monthlyRows=MONTHS.map((name,i)=>{
+          const ml=leads.filter(l=>{const d=new Date(l.createdAt);return d.getFullYear()===+yr&&d.getMonth()===i});
+          const cl=ml.filter(l=>l.status==='closed');
+          const rev=yr==='2025'?REVENUE_2025[i]:cl.reduce((s,l)=>s+(l.amount||0),0);
+          const isFuture=now.getFullYear()===+yr&&i>now.getMonth();
+          return{name,total:ml.length,closed:cl.length,lost:ml.filter(l=>l.status==='lost').length,rev,conv:ml.length?Math.round(cl.length/ml.length*100):0,isFuture};
+        });
+        const maxRev=Math.max(...monthlyRows.map(m=>m.rev),1);
+        const totals={total:monthlyRows.reduce((s,m)=>s+m.total,0),closed:monthlyRows.reduce((s,m)=>s+m.closed,0),lost:monthlyRows.reduce((s,m)=>s+m.lost,0),rev:monthlyRows.reduce((s,m)=>s+m.rev,0)};
+        return <div className="card">
+          <div className="ch"><span className="ct">פירוט חודשי · {yr}</span></div>
+          <div style={{overflowX:'auto'}}><table>
+            <thead><tr><th>חודש</th><th>לידים</th><th>נסגרו</th><th>לא נסגר</th><th>המרה</th><th>הכנסות</th><th style={{width:100}}></th></tr></thead>
+            <tbody>
+              {monthlyRows.map(m=>(
+                <tr key={m.name} style={{opacity:m.isFuture?.3:1}}>
+                  <td style={{fontWeight:600}}>{m.name}</td>
+                  <td>{m.total||'—'}</td>
+                  <td style={{color:'var(--green)',fontWeight:m.closed?600:400}}>{m.closed||'—'}</td>
+                  <td style={{color:'var(--red)'}}>{m.lost||'—'}</td>
+                  <td>{m.total>0?<span style={{fontWeight:700,color:m.conv>40?'var(--green)':m.conv>20?'#9a6d08':'var(--red)'}}>{m.conv}%</span>:'—'}</td>
+                  <td style={{fontWeight:m.rev?600:400,color:m.rev?'var(--accent)':'var(--text3)'}}>{m.rev?`₪${m.rev.toLocaleString()}`:'—'}</td>
+                  <td><div className="pbar" style={{width:88}}><div className="pf" style={{width:`${m.rev/maxRev*100}%`,background:'oklch(50% .19 22)'}}/></div></td>
+                </tr>
+              ))}
+              <tr style={{background:'var(--surface2)',fontWeight:700}}>
+                <td>סה"כ</td><td>{totals.total}</td>
+                <td style={{color:'var(--green)'}}>{totals.closed}</td>
+                <td style={{color:'var(--red)'}}>{totals.lost}</td>
+                <td></td>
+                <td style={{color:'var(--accent)'}}>₪{totals.rev.toLocaleString()}</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table></div>
+        </div>;
+      })()}
+    </div>
+  );
+}
+
+// ── LEADS PAGE ───────────────────────────────────────────────────
+function LeadsPage({leads,onAdd,onEdit,onDelete,onAddTasks}){
+  const now=new Date();
+  const years=getYears(leads);
+  const cy=now.getFullYear().toString();
+  const [search,setSearch]=useState('');
+  const [fStatus,setFStatus]=useState('all');
+  const [fSource,setFSource]=useState('all');
+  const [fType,setFType]=useState('all');
+  const [fYear,setFYear]=useState(cy);
+  const [showForm,setShowForm]=useState(false);
+  const [editL,setEditL]=useState(null);
+  const [viewL,setViewL]=useState(null);
+
+  const filtered=leads.filter(l=>{
+    if(fStatus!=='all'&&l.status!==fStatus)return false;
+    if(fSource!=='all'&&l.source!==fSource)return false;
+    if(fType!=='all'&&l.eventType!==fType)return false;
+    if(fYear!=='all'&&!l.createdAt?.startsWith(fYear))return false;
+    const q=search.toLowerCase();
+    return !q||l.name.toLowerCase().includes(q)||(l.location||'').includes(q)||(l.brideName||'').includes(q);
+  }).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+
+  const handleSave=(lead)=>{
+    const prev=editL;
+    if(editL)onEdit(lead);else onAdd(lead);
+
+    // Auto-tasks
+    const newTasks=[];
+    // Follow-up task — recurring every 2 days, 5 reminders (covering 10 days)
+    if(lead.status==='follow'&&(!prev||prev.status!=='follow')){
+      for(let i=1;i<=5;i++){
+        newTasks.push({id:uid(),leadId:lead.id,kind:'follow',title:`פולו אפ — ${lead.name}`,cat:'פולו אפ',due:addDays(new Date(),i*2),notes:'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס',done:false});
+      }
+    }
+    // Event tasks (only when newly closed with a date, or date changed)
+    if(lead.status==='closed'&&lead.eventDate&&(!prev||prev.status!=='closed'||prev.eventDate!==lead.eventDate)){
+      newTasks.push({id:uid(),leadId:lead.id,kind:'questionnaire-send',title:`שאלון לחתן — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),-7),notes:'שלחי שאלון לחתן ובקשי מילוי פרטים לפני האירוע',done:false});
+      newTasks.push({id:uid(),leadId:lead.id,kind:'questionnaire-verify',title:`וידוא שאלונים — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),-1),notes:'ודאי שכל השאלונים מולאו ויש לך את כל המידע לאירוע',done:false});
+      newTasks.push({id:uid(),leadId:lead.id,kind:'receipt',title:`שליחת קבלה — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),1),notes:'שלחי קבלה ללקוחה לאחר האירוע',done:false});
+    }
+    if(newTasks.length)onAddTasks(newTasks);
+
+    setShowForm(false);setEditL(null);
+  };
+
+  return(
+    <div>
+      <div className="ph">
+        <div><div className="pt">לידים</div><div className="ps">{filtered.length} לידים{fYear!=='all'?` ב-${fYear}`:''} · {filtered.filter(l=>l.status==='closed').length} נסגרו</div></div>
+        <button className="btn btn-p" onClick={()=>{setEditL(null);setShowForm(true)}}>+ ליד חדש</button>
+      </div>
+      <div className="fb">
+        <input className="fi" style={{width:180}} placeholder="חיפוש..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <select className="fi" style={{width:110}} value={fYear} onChange={e=>setFYear(e.target.value)}>
+          <option value="all">כל השנים</option>{years.map(y=><option key={y} value={String(y)}>{y}</option>)}
+        </select>
+        <select className="fi" style={{width:120}} value={fStatus} onChange={e=>setFStatus(e.target.value)}>
+          <option value="all">כל הסטטוס</option><option value="closed">נסגר</option><option value="lost">לא נסגר</option><option value="follow">פולו אפ</option><option value="open">פתוח</option>
+        </select>
+        <select className="fi" style={{width:140}} value={fSource} onChange={e=>setFSource(e.target.value)}>
+          <option value="all">כל המקורות</option>{SOURCES.map(s=><option key={s}>{s}</option>)}
+        </select>
+        <select className="fi" style={{width:130}} value={fType} onChange={e=>setFType(e.target.value)}>
+          <option value="all">כל הסוגים</option>{EVENT_TYPES.map(t=><option key={t}>{t}</option>)}
+        </select>
+        <span style={{fontSize:12,color:'var(--text3)',marginRight:'auto'}}>{filtered.length} תוצאות</span>
+      </div>
+      <div className="card"><div style={{overflowX:'auto'}}>
+        <table>
+          <thead><tr><th>שם ליד</th><th>כלה</th><th>מקור</th><th>סוג</th><th>סטטוס</th><th>תאריך פניה</th><th>תאריך אירוע</th><th>לתשלום</th><th>יתרה</th><th>הערות</th><th style={{width:80}}></th></tr></thead>
+          <tbody>{filtered.map(l=>{
+            const total=l.amount||0;
+            const balance=l.advanceDone?(total-(l.advance||0)):total;
+            return <tr key={l.id}>
+              <td><div style={{fontWeight:600,fontSize:13}}>{l.name}</div></td>
+              <td style={{fontSize:12,color:'var(--text2)'}}>{l.brideName||'—'}</td>
+              <td><SourceDot source={l.source}/></td>
+              <td><span style={{fontSize:12,color:'var(--text2)'}}>{l.eventType}</span></td>
+              <td><SBadge status={l.status}/></td>
+              <td style={{fontSize:12,color:'var(--text2)',whiteSpace:'nowrap'}}>{fmt(l.createdAt)}</td>
+              <td style={{fontSize:12,whiteSpace:'nowrap'}}>{l.eventDate?fmt(l.eventDate):'—'}</td>
+              <td style={{fontWeight:total?600:400,color:total?'var(--green)':'var(--text3)'}}>{total?`₪${total.toLocaleString()}`:'—'}</td>
+              <td style={{fontWeight:600,color:balance>0?'var(--red)':balance===0&&total>0?'var(--green)':'var(--text3)'}}>{total?`₪${balance.toLocaleString()}`:'—'}</td>
+              <td style={{fontSize:11,color:'var(--text2)',maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={l.notes}>{l.notes||'—'}</td>
+              <td><div style={{display:'flex',gap:3}}>
+                {l.status==='closed'&&<button className="btn btn-icon btn-g" onClick={()=>setViewL(l)} title="פרטים">↗</button>}
+                <button className="btn btn-icon btn-g" onClick={()=>{setEditL(l);setShowForm(true)}} title="עריכה">✎</button>
+                <button className="btn btn-icon btn-g" style={{color:'var(--red)'}} onClick={()=>{if(confirm('למחוק?'))onDelete(l.id)}}>✕</button>
+              </div></td>
+            </tr>;
+          })}</tbody>
+        </table>
+      </div></div>
+      {showForm&&<LeadFormModal lead={editL} onSave={handleSave} onClose={()=>{setShowForm(false);setEditL(null)}}/>}
+      {viewL&&<EventDetailModal lead={viewL} onEdit={()=>{setViewL(null);setEditL(viewL);setShowForm(true)}} onClose={()=>setViewL(null)}/>}
+    </div>
+  );
+}
+
+// ── EVENTS PAGE ──────────────────────────────────────────────────
+function EventsPage({leads,onEdit}){
+  const now=new Date();
+  const [viewL,setViewL]=useState(null);
+  const [editL,setEditL]=useState(null);
+  const closed=leads.filter(l=>l.status==='closed');
+  const years=[...[...new Set(closed.filter(l=>l.eventDate).map(l=>l.eventDate.slice(0,4)))].sort((a,b)=>b-a)];
+  const cy=now.getFullYear().toString();
+  const [fYear,setFYear]=useState(cy);
+  const filtered=fYear==='הכל'?closed:closed.filter(l=>l.eventDate?.startsWith(fYear));
+  const msStart=new Date(now.getFullYear(),now.getMonth(),1);
+  const msEnd=new Date(now.getFullYear(),now.getMonth()+1,0);
+  const thisMonth=filtered.filter(l=>l.eventDate&&new Date(l.eventDate)>=msStart&&new Date(l.eventDate)<=msEnd).sort((a,b)=>new Date(a.eventDate)-new Date(b.eventDate));
+  const upcoming=filtered.filter(l=>l.eventDate&&new Date(l.eventDate)>msEnd).sort((a,b)=>new Date(a.eventDate)-new Date(b.eventDate));
+  const past=filtered.filter(l=>!l.eventDate||new Date(l.eventDate)<msStart).sort((a,b)=>new Date(b.eventDate||b.createdAt)-new Date(a.eventDate||a.createdAt));
+  const totalRev=filtered.reduce((s,l)=>s+(l.amount||0),0);
+  const totalBalance=filtered.reduce((s,l)=>{const t=l.amount||0;return s+(l.advanceDone?(t-(l.advance||0)):t)},0);
+
+  const ECard=({l,dim})=>{
+    const d=l.eventDate?new Date(l.eventDate):null;
+    const days=d?Math.ceil((d-now)/86400000):null;
+    const balance=l.advanceDone?((l.amount||0)-(l.advance||0)):(l.amount||0);
+    return <div className="event-card" style={dim?{opacity:.65}:{}} onClick={()=>setViewL(l)}>
+      {d?<div className="edate-box" style={dim?{background:'var(--surface2)',borderColor:'var(--border)'}:{}}>
+        <div className="edate-day" style={dim?{color:'var(--text3)'}:{}}>{d.getDate()}</div>
+        <div className="edate-mon">{MONTHS[d.getMonth()].slice(0,3)}</div>
+      </div>:<div style={{width:50,textAlign:'center',fontSize:20,paddingTop:8}}>—</div>}
+      <div style={{flex:1}}>
+        <div style={{fontWeight:700,fontSize:14}}>{l.brideName||l.name}</div>
+        <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>{l.guideName?`מלווה: ${l.guideName} · `:''}{l.eventType}{l.location?` · ${l.location}`:''}</div>
+        <div style={{display:'flex',gap:6,marginTop:6,flexWrap:'wrap',alignItems:'center'}}>
+          {l.amount>0&&<span className="badge bg">₪{l.amount.toLocaleString()}</span>}
+          {balance>0&&<span className="badge br">יתרה: ₪{balance.toLocaleString()}</span>}
+          {l.advanceDone&&l.advance>0&&<span className="badge bb">מקדמה ✓</span>}
+        </div>
+      </div>
+      {days!==null&&<div style={{textAlign:'center',minWidth:38,flexShrink:0}}>
+        <div style={{fontSize:16,fontWeight:800,color:days<0?'var(--text3)':days<7?'var(--red)':'var(--accent)'}}>{days<0?'✓':days}</div>
+        <div style={{fontSize:10,color:'var(--text3)'}}>{days<0?'עבר':'ימים'}</div>
+      </div>}
+    </div>;
+  };
+
+  return(
+    <div>
+      <ReminderBanner leads={leads}/>
+      <div className="ph">
+        <div><div className="pt">אירועים</div><div className="ps">{closed.length} אירועים סגורים</div></div>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          <select className="fi" style={{width:120}} value={fYear} onChange={e=>setFYear(e.target.value)}>
+            <option value="הכל">כל הזמנים</option>{years.map(y=><option key={y}>{y}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="kgrid" style={{gridTemplateColumns:'repeat(4,1fr)',marginBottom:18}}>
+        <div className="kcard"><div className="klabel">אירועים</div><div className="kval">{filtered.length}</div></div>
+        <div className="kcard"><div className="klabel">הכנסות</div><div className="kval" style={{color:'var(--green)'}}>₪{totalRev.toLocaleString()}</div><div className="ksub">ממוצע ₪{filtered.length?Math.round(totalRev/filtered.length).toLocaleString():0}</div></div>
+        <div className="kcard"><div className="klabel">יתרות פתוחות</div><div className="kval" style={{color:'var(--red)'}}>₪{totalBalance.toLocaleString()}</div><div className="ksub">לגביה</div></div>
+        <div className="kcard"><div className="klabel">החודש</div><div className="kval">{thisMonth.length}</div><div className="ksub">{MONTHS[now.getMonth()]}</div></div>
+      </div>
+
+      {thisMonth.length>0&&<><div className="section-divider">החודש — {MONTHS[now.getMonth()]} {now.getFullYear()}</div>{thisMonth.map(l=><ECard key={l.id} l={l} dim={new Date(l.eventDate)<now}/>)}</>}
+
+      <div className="g2">
+        <div>{upcoming.length>0&&<><div className="section-divider">קרובים</div>{upcoming.slice(0,8).map(l=><ECard key={l.id} l={l}/>)}</>}</div>
+        <div><div className="section-divider">עברו</div>{past.slice(0,12).map(l=><ECard key={l.id} l={l} dim/>)}</div>
+      </div>
+
+      {viewL&&<EventDetailModal lead={viewL} onEdit={()=>{setEditL(viewL);setViewL(null)}} onClose={()=>setViewL(null)}/>}
+      {editL&&<LeadFormModal lead={editL} onSave={l=>{onEdit(l);setEditL(null)}} onClose={()=>setEditL(null)}/>}
+    </div>
+  );
+}
+
+// ── ANALYTICS PAGE ───────────────────────────────────────────────
+function Analytics({leads}){
+  const [tab,setTab]=useState('מקורות');
+  const years=getYears(leads);
+  const cy=new Date().getFullYear().toString();
+  const [year,setYear]=useState(cy);
+  const yl=year==='הכל'?leads:leads.filter(l=>l.createdAt?.startsWith(year));
+  const closed=yl.filter(l=>l.status==='closed');
+  const answered=yl.filter(l=>l.answered&&l.answered.includes('ענ')&&!l.answered.includes('לא'));
+  const srcStats=SOURCES.map(src=>{
+    const total=yl.filter(l=>l.source===src).length;
+    const cl=yl.filter(l=>l.source===src&&l.status==='closed').length;
+    const rev=yl.filter(l=>l.source===src&&l.status==='closed').reduce((s,l)=>s+(l.amount||0),0);
+    return{source:src,total,closed:cl,conv:total>=3?Math.round(cl/total*100):null,rev,reliable:total>=3};
+  }).filter(s=>s.total>0).sort((a,b)=>b.total-a.total);
+  const typeStats=EVENT_TYPES.map(t=>{
+    const total=yl.filter(l=>l.eventType===t).length;
+    const cl=yl.filter(l=>l.eventType===t&&l.status==='closed').length;
+    const rev=yl.filter(l=>l.eventType===t&&l.status==='closed').reduce((s,l)=>s+(l.amount||0),0);
+    return{type:t,total,closed:cl,conv:total?Math.round(cl/total*100):0,rev};
+  }).filter(s=>s.total>0).sort((a,b)=>b.total-a.total);
+  const reasons={};
+  yl.filter(l=>l.status==='lost'&&l.lostReason).forEach(l=>{reasons[l.lostReason]=(reasons[l.lostReason]||0)+1});
+  const reasonEntries=Object.entries(reasons).sort((a,b)=>b[1]-a[1]);
+  const bestConvSrc=srcStats.filter(s=>s.reliable).sort((a,b)=>b.conv-a.conv)[0];
+
+  return(
+    <div>
+      <div className="ph">
+        <div><div className="pt">ניתוח המרות</div><div className="ps">ביצועים, תובנות ודרכי פעולה</div></div>
+        <select className="fi" style={{width:130}} value={year} onChange={e=>setYear(e.target.value)}>
+          <option value="הכל">כל הזמנים</option>{years.map(y=><option key={y} value={String(y)}>{y}</option>)}
+        </select>
+      </div>
+      <div className="kgrid" style={{marginBottom:18}}>
+        <div className="kcard"><div className="klabel">לידים</div><div className="kval">{yl.length}</div></div>
+        <div className="kcard"><div className="klabel">ענו לטלפון</div><div className="kval">{answered.length}</div><div className="ksub">{yl.length?Math.round(answered.length/yl.length*100):0}%</div></div>
+        <div className="kcard"><div className="klabel">נסגרו</div><div className="kval" style={{color:'var(--green)'}}>{closed.length}</div><div className="ksub">{yl.length?Math.round(closed.length/yl.length*100):0}% המרה</div></div>
+        <div className="kcard"><div className="klabel">הכנסות</div><div className="kval" style={{color:'var(--accent)'}}>₪{closed.reduce((s,l)=>s+(l.amount||0),0).toLocaleString()}</div></div>
+      </div>
+      <div className="tabs">{['מקורות','סוגי אירועים','סיבות אי-סגירה','פאנל המרה'].map(t=><div key={t} className={`tab ${tab===t?'active':''}`} onClick={()=>setTab(t)}>{t}</div>)}</div>
+
+      {tab==='מקורות'&&<div className="g2">
+        <div className="card"><div className="ch"><span className="ct">לידים לפי מקור</span></div><div className="cb"><BarChart height={200} labels={srcStats.map(s=>s.source)} data={srcStats.map(s=>s.total)} colors={srcStats.map(s=>SRC_HEX[s.source]||'#aaa')}/></div></div>
+        <div className="card"><div className="ch"><span className="ct">ביצועי מקורות</span></div><div style={{overflowX:'auto'}}>
+          <table><thead><tr><th>מקור</th><th>לידים</th><th>נסגרו</th><th>המרה</th><th>הכנסות</th></tr></thead><tbody>
+            {srcStats.map(s=><tr key={s.source}><td><SourceDot source={s.source}/></td><td style={{fontWeight:600}}>{s.total}</td><td>{s.closed}</td>
+              <td>{s.conv!==null?<span style={{fontWeight:700,color:s.conv>40?'var(--green)':s.conv>20?'var(--yellow)':'var(--red)'}}>{s.conv}%</span>:<span style={{color:'var(--text3)',fontSize:11}}>מעט נתונים</span>}</td>
+              <td style={{color:'var(--green)',fontWeight:600}}>{s.rev?`₪${s.rev.toLocaleString()}`:'—'}</td></tr>)}
+          </tbody></table>
+        </div></div>
+      </div>}
+
+      {tab==='סוגי אירועים'&&<div className="g2">
+        <div className="card"><div className="ch"><span className="ct">לפי סוג</span></div><div className="cb"><DonutChart height={220} data={typeStats.map(t=>t.total)} labels={typeStats.map(t=>t.type)} colors={typeStats.map(t=>TYPE_CSS[t.type]||'#aaa')}/></div></div>
+        <div className="card"><div className="ch"><span className="ct">ביצועים לפי סוג</span></div><div style={{overflowX:'auto'}}>
+          <table><thead><tr><th>סוג</th><th>לידים</th><th>נסגרו</th><th>המרה</th><th>הכנסות</th></tr></thead><tbody>
+            {typeStats.map(t=><tr key={t.type}><td style={{fontWeight:600}}><span className="dot" style={{background:TYPE_CSS[t.type]}}/>{t.type}</td><td>{t.total}</td><td>{t.closed}</td>
+              <td><span style={{fontWeight:700,color:t.conv>40?'var(--green)':t.conv>20?'var(--yellow)':'var(--red)'}}>{t.conv}%</span></td>
+              <td style={{color:'var(--green)',fontWeight:600}}>{t.rev?`₪${t.rev.toLocaleString()}`:'—'}</td></tr>)}
+          </tbody></table>
+        </div></div>
+      </div>}
+
+      {tab==='סיבות אי-סגירה'&&<div>
+        <div className="g2">
+          <div className="card"><div className="ch"><span className="ct">סיבות אי-סגירה</span></div><div className="cb"><BarChart height={220} labels={reasonEntries.map(([k])=>k)} data={reasonEntries.map(([,v])=>v)} colors={reasonEntries.map(()=>'oklch(50% .18 20 / .75)')}/></div></div>
+          <div className="card"><div className="ch"><span className="ct">פירוט</span></div><div className="cb">
+            {reasonEntries.map(([r,c])=><div key={r} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+              <span style={{minWidth:145,fontSize:13,fontWeight:500}}>{r}</span>
+              <div className="pbar" style={{flex:1}}><div className="pf" style={{width:`${reasonEntries[0]?c/reasonEntries[0][1]*100:0}%`,background:'oklch(50% .18 20)'}}/></div>
+              <span style={{fontWeight:700,fontSize:13,minWidth:22}}>{c}</span>
+            </div>)}
+          </div></div>
+        </div>
+        <div style={{marginTop:18}}>
+          <div className="sec" style={{marginBottom:14}}>תובנות ודרכי פעולה</div>
+          {reasonEntries.slice(0,5).map(([reason,count])=>{
+            const info=INSIGHT_MAP[reason]||{title:reason,action:`${count} לידים לא נסגרו מסיבה זו.`,color:'var(--text3)'};
+            return <div key={reason} className="insight-card">
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
+                <div className="dot" style={{background:info.color,width:10,height:10}}/>
+                <span style={{fontWeight:700,fontSize:13}}>{info.title}</span>
+                <span style={{fontSize:11,color:'var(--text3)',marginRight:'auto',background:'var(--surface2)',padding:'2px 8px',borderRadius:20}}>{count} מקרים</span>
+              </div>
+              <div className="insight-action">{info.action}</div>
+            </div>;
+          })}
+        </div>
+      </div>}
+
+      {tab==='פאנל המרה'&&<div className="card"><div className="ch"><span className="ct">פאנל המרה</span></div><div className="cb">
+        {[
+          {l:'לידים התקבלו',n:yl.length,c:'oklch(50% .17 200)',d:'סה"כ פניות נכנסות'},
+          {l:'ענו לטלפון',n:answered.length,c:'oklch(50% .18 240)',d:`${yl.length-answered.length} לא ענו`},
+          {l:'נשלחה הצעת מחיר',n:yl.filter(l=>l.amount>0).length,c:'oklch(60% .17 80)',d:'לידים עם סכום בשיחה'},
+          {l:'נסגרו בהצלחה',n:closed.length,c:'oklch(50% .15 145)',d:`${answered.length?Math.round(closed.length/answered.length*100):0}% מהמוענים`},
+        ].map(({l,n,c,d})=>(
+          <div key={l} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 0',borderBottom:'1px solid var(--border)'}}>
+            <div style={{minWidth:190}}>
+              <div style={{fontSize:13,color:'var(--text2)',fontWeight:500}}>{l}</div>
+              <div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>{d}</div>
+            </div>
+            <div style={{flex:1,height:30,background:'var(--surface2)',borderRadius:6,overflow:'hidden'}}>
+              <div style={{width:`${yl.length?Math.max(n/yl.length*100,2):0}%`,height:'100%',background:c,borderRadius:6,display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:8}}>
+                {n/yl.length>.1&&<span style={{fontSize:11,fontWeight:700,color:'#fff'}}>{yl.length?Math.round(n/yl.length*100):0}%</span>}
+              </div>
+            </div>
+            <span style={{fontWeight:800,fontSize:15,minWidth:30,textAlign:'left'}}>{n}</span>
+          </div>
+        ))}
+        <div style={{marginTop:20,background:'var(--accentbg)',borderRadius:8,padding:'14px 16px',border:'1px solid oklch(91% .05 22)'}}>
+          <div style={{fontWeight:700,fontSize:13,color:'var(--accent)',marginBottom:8}}>תובנות מרכזיות</div>
+          <ul style={{paddingRight:16,fontSize:13,color:'var(--text2)',lineHeight:2.1}}>
+            <li>מתוך {yl.length} לידים, <strong>{yl.length-answered.length}</strong> לא ענו — {yl.length?Math.round((yl.length-answered.length)/yl.length*100):0}% פוטנציאל אבוד</li>
+            {bestConvSrc&&<li>המרה גבוהה ביותר: <strong>{bestConvSrc.source}</strong> ({bestConvSrc.conv}%) — הגדיל השקעה</li>}
+            <li>ממוצע עסקה: <strong>₪{closed.length?Math.round(closed.reduce((s,l)=>s+(l.amount||0),0)/closed.length).toLocaleString():0}</strong></li>
+            {reasonEntries[0]&&<li>סיבה שכיחה: <strong>{reasonEntries[0][0]}</strong> ({reasonEntries[0][1]} מקרים)</li>}
+          </ul>
+        </div>
+      </div></div>}
+    </div>
+  );
+}
+
+// ── TASKS PAGE ───────────────────────────────────────────────────
+function Tasks({extraTasks,onClearExtra}){
+  const [tasks,setTasks]=useState(()=>load('biz_tasks',[]));
+  const [showForm,setShowForm]=useState(false);
+  const [filter,setFilter]=useState('active');
+  const [form,setForm]=useState({title:'',cat:'פולו אפ',due:'',notes:'',done:false});
+
+  useEffect(()=>{
+    if(extraTasks&&extraTasks.length){
+      setTasks(p=>{const merged=[...extraTasks,...p];save('biz_tasks',merged);return merged});
+      onClearExtra();
+    }
+  },[extraTasks]);
+  useEffect(()=>save('biz_tasks',tasks),[tasks]);
+
+  const sf=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const addTask=()=>{if(!form.title.trim())return;setTasks(p=>[{...form,id:uid()},...p]);setForm({title:'',cat:'פולו אפ',due:'',notes:'',done:false});setShowForm(false)};
+  const toggle=id=>setTasks(p=>p.map(t=>t.id===id?{...t,done:!t.done}:t));
+  const del=id=>setTasks(p=>p.filter(t=>t.id!==id));
+
+  const now=new Date();
+  const active=tasks.filter(t=>!t.done);
+  const overdue=tasks.filter(t=>!t.done&&t.due&&new Date(t.due)<now);
+  const filtered=tasks.filter(t=>filter==='all'||(filter==='active'&&!t.done)||(filter==='done'&&t.done)||(filter===t.cat));
+
+  return(
+    <div>
+      <div className="ph">
+        <div><div className="pt">משימות עסקיות</div><div className="ps">{active.length} פעילות{overdue.length?` · ${overdue.length} באיחור`:''}</div></div>
+        <button className="btn btn-p" onClick={()=>setShowForm(p=>!p)}>+ משימה חדשה</button>
+      </div>
+      {showForm&&<div className="card" style={{marginBottom:16,padding:18}}>
+        <div style={{fontWeight:700,marginBottom:14,fontSize:14}}>משימה חדשה</div>
+        <div className="fg2">
+          <div className="fg" style={{gridColumn:'span 2'}}><label className="fl">כותרת</label><input className="fi" value={form.title} onChange={e=>sf('title',e.target.value)} placeholder="תיאור המשימה..."/></div>
+          <div className="fg"><label className="fl">קטגוריה</label><select className="fi" value={form.cat} onChange={e=>sf('cat',e.target.value)}>{TASK_CATS.map(c=><option key={c}>{c}</option>)}</select></div>
+          <div className="fg"><label className="fl">תאריך יעד</label><input type="date" className="fi" value={form.due} onChange={e=>sf('due',e.target.value)}/></div>
+          <div className="fg" style={{gridColumn:'span 2'}}><label className="fl">הערות</label><input className="fi" value={form.notes} onChange={e=>sf('notes',e.target.value)}/></div>
+        </div>
+        <div style={{display:'flex',gap:8}}><button className="btn btn-p btn-sm" onClick={addTask}>הוסף</button><button className="btn btn-s btn-sm" onClick={()=>setShowForm(false)}>ביטול</button></div>
+      </div>}
+      <div className="fb">
+        {['active','all','done',...TASK_CATS].map(f=>(
+          <button key={f} className={`btn btn-sm ${filter===f?'btn-p':'btn-s'}`} onClick={()=>setFilter(f)}>
+            {f==='active'?'פעילות':f==='all'?'הכל':f==='done'?'הושלמו':f}
+          </button>
+        ))}
+      </div>
+      {filtered.length===0&&<div className="card" style={{padding:32,textAlign:'center',color:'var(--text3)',fontSize:13}}>אין משימות כאן</div>}
+      {filtered.map(t=>{
+        const isOD=!t.done&&t.due&&new Date(t.due)<now;
+        return <div key={t.id} className={`task-card ${t.done?'done-task':''}`}>
+          <input type="checkbox" checked={t.done} onChange={()=>toggle(t.id)} style={{width:16,height:16,marginTop:2,cursor:'pointer',flexShrink:0}}/>
+          <div style={{flex:1}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+              <span style={{fontWeight:600,fontSize:13.5,textDecoration:t.done?'line-through':'none'}}>{t.title}</span>
+              <span style={{fontSize:11,fontWeight:600,color:CAT_CSS[t.cat]||'var(--text3)'}}>{t.cat}</span>
+              {t.due&&<span style={{fontSize:11,color:isOD?'var(--red)':'var(--text3)',fontWeight:isOD?700:400}}>{isOD?'⚠ ':''}{fmt(t.due)}</span>}
+            </div>
+            {t.notes&&<div style={{fontSize:12,color:'var(--text2)',marginTop:3}}>{t.notes}</div>}
+          </div>
+          <button className="btn btn-icon btn-g" style={{color:'var(--red)'}} onClick={()=>del(t.id)}>✕</button>
+        </div>;
+      })}
+    </div>
+  );
+}
+
+// ── APP ──────────────────────────────────────────────────────────
+const TWEAK_DEFAULTS={"businessName":"הסטודיו שלי","accentHue":22};
+
+function App(){
+  const [page,setPage]=useState(()=>localStorage.getItem('biz_page')||'dashboard');
+  const [leads,setLeads]=useState(()=>load('biz_leads3',typeof REAL_LEADS!=='undefined'?REAL_LEADS:[]));
+  const [pendingTasks,setPendingTasks]=useState([]);
+  const [tweaks,setTweaks]=useState(()=>{try{return{...TWEAK_DEFAULTS,...JSON.parse(localStorage.getItem('biz_tweaks')||'{}')};}catch{return TWEAK_DEFAULTS}});
+  const [showTweaks,setShowTweaks]=useState(false);
+
+  useEffect(()=>save('biz_leads3',leads),[leads]);
+  useEffect(()=>localStorage.setItem('biz_page',page),[page]);
+
+  useEffect(()=>{
+    if(tweaks.accentHue){
+      document.documentElement.style.setProperty('--accent',`oklch(50% .19 ${tweaks.accentHue})`);
+      document.documentElement.style.setProperty('--accentbg',`oklch(97% .04 ${tweaks.accentHue})`);
+    }
+  },[tweaks.accentHue]);
+
+  const applyTweak=(k,v)=>{const n={...tweaks,[k]:v};setTweaks(n);localStorage.setItem('biz_tweaks',JSON.stringify(n));window.parent.postMessage({type:'__edit_mode_set_keys',edits:{[k]:v}},'*')};
+
+  const nav=[
+    {id:'dashboard',l:'דשבורד',Icon:Icons.dashboard},
+    {id:'leads',l:'לידים',Icon:Icons.leads},
+    {id:'events',l:'אירועים',Icon:Icons.events},
+    {id:'analytics',l:'ניתוח המרות',Icon:Icons.analytics},
+    {id:'tasks',l:'משימות',Icon:Icons.tasks},
+  ];
+
+  return(
+    <div className="app">
+      <nav className="sidebar">
+        <div className="sidebar-logo">
+          <h1>{tweaks.businessName}</h1>
+          <p>ניהול לידים ואירועים</p>
+        </div>
+        <div className="sidebar-nav">
+          {nav.map(({id,l,Icon})=>(
+            <div key={id} className={`nav-item ${page===id?'active':''}`} onClick={()=>setPage(id)}>
+              <Icon/>{l}
+            </div>
+          ))}
+        </div>
+        <div className="sidebar-foot">{leads.length} לידים · {leads.filter(l=>l.status==='closed').length} אירועים</div>
+      </nav>
+      <main className="main">
+        {page==='dashboard'&&<Dashboard leads={leads}/>}
+        {page==='leads'&&<LeadsPage leads={leads}
+          onAdd={l=>setLeads(p=>[l,...p])}
+          onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}
+          onDelete={id=>setLeads(p=>p.filter(l=>l.id!==id))}
+          onAddTasks={tasks=>{setPendingTasks(t=>[...t,...tasks]);setPage('tasks')}}
+        />}
+        {page==='events'&&<EventsPage leads={leads} onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}/>}
+        {page==='analytics'&&<Analytics leads={leads}/>}
+        {page==='tasks'&&<Tasks extraTasks={pendingTasks} onClearExtra={()=>setPendingTasks([])}/>}
+      </main>
+      {showTweaks&&<div className="tweaks-panel">
+        <div style={{fontWeight:700,marginBottom:12,fontSize:13}}>Tweaks</div>
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,fontWeight:700,color:'var(--text2)',marginBottom:4}}>שם העסק</div>
+          <input className="fi" style={{fontSize:12}} value={tweaks.businessName} onChange={e=>applyTweak('businessName',e.target.value)}/>
+        </div>
+        <div>
+          <div style={{fontSize:11,fontWeight:700,color:'var(--text2)',marginBottom:4}}>צבע ראשי (Hue {tweaks.accentHue}°)</div>
+          <input type="range" min={0} max={360} value={tweaks.accentHue} onChange={e=>applyTweak('accentHue',+e.target.value)} style={{width:'100%'}}/>
+          <div style={{display:'flex',gap:6,marginTop:8,flexWrap:'wrap'}}>
+            {[22,200,330,145,280].map(h=><div key={h} onClick={()=>applyTweak('accentHue',h)} style={{width:20,height:20,borderRadius:'50%',background:`oklch(50% .19 ${h})`,cursor:'pointer',border:tweaks.accentHue===h?'2px solid var(--text)':'2px solid transparent'}}/>)}
+          </div>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

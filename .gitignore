@@ -1,0 +1,6 @@
+.claude/
+design/
+design.tar.gz
+*.tmp
+.DS_Store
+Thumbs.db

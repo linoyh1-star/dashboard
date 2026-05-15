@@ -9,6 +9,23 @@
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@latest/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script>
+window.FIREBASE_CONFIG = {
+  apiKey: "__FIREBASE_API_KEY__",
+  authDomain: "__FIREBASE_AUTH_DOMAIN__",
+  projectId: "__FIREBASE_PROJECT_ID__",
+  storageBucket: "__FIREBASE_STORAGE_BUCKET__",
+  messagingSenderId: "__FIREBASE_MESSAGING_SENDER_ID__",
+  appId: "__FIREBASE_APP_ID__"
+};
+window.FIREBASE_READY = !window.FIREBASE_CONFIG.apiKey.startsWith('__FIREBASE');
+if (window.FIREBASE_READY) {
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+}
+</script>
 <script src="uploads/leads_embed.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap');
@@ -950,19 +967,17 @@ function Analytics({leads}){
 }
 
 // ── TASKS PAGE ───────────────────────────────────────────────────
-function Tasks({extraTasks,onClearExtra}){
-  const [tasks,setTasks]=useState(()=>load('biz_tasks',[]));
+function Tasks({tasks,setTasks,extraTasks,onClearExtra}){
   const [showForm,setShowForm]=useState(false);
   const [filter,setFilter]=useState('active');
   const [form,setForm]=useState({title:'',cat:'פולו אפ',due:'',notes:'',done:false});
 
   useEffect(()=>{
     if(extraTasks&&extraTasks.length){
-      setTasks(p=>{const merged=[...extraTasks,...p];save('biz_tasks',merged);return merged});
+      setTasks(p=>[...extraTasks,...p]);
       onClearExtra();
     }
   },[extraTasks]);
-  useEffect(()=>save('biz_tasks',tasks),[tasks]);
 
   const sf=(k,v)=>setForm(p=>({...p,[k]:v}));
   const addTask=()=>{if(!form.title.trim())return;setTasks(p=>[{...form,id:uid()},...p]);setForm({title:'',cat:'פולו אפ',due:'',notes:'',done:false});setShowForm(false)};
@@ -1020,24 +1035,120 @@ function Tasks({extraTasks,onClearExtra}){
 // ── APP ──────────────────────────────────────────────────────────
 const TWEAK_DEFAULTS={"businessName":"הסטודיו שלי","accentHue":22};
 
+// Hook: sync state with Firestore document, fall back to localStorage if Firebase isn't ready
+function useSyncedState(uid,docName,defaultValue,localKey){
+  const [data,setData]=useState(defaultValue);
+  const [loaded,setLoaded]=useState(false);
+  const skipNextWrite=useRef(false);
+  const useFirestore=window.FIREBASE_READY&&uid;
+
+  // Initial load + listener
+  useEffect(()=>{
+    if(!useFirestore){
+      // localStorage mode
+      const local=load(localKey,defaultValue);
+      setData(local);
+      setLoaded(true);
+      return;
+    }
+    const docRef=firebase.firestore().doc(`users/${uid}/data/${docName}`);
+    const unsub=docRef.onSnapshot(snap=>{
+      if(snap.exists){
+        const remote=snap.data().value;
+        skipNextWrite.current=true;
+        setData(remote===undefined?defaultValue:remote);
+      }else{
+        // First time - migrate localStorage if any
+        const local=load(localKey,defaultValue);
+        setData(local);
+      }
+      setLoaded(true);
+    },err=>{console.error('Firestore listen error:',err);setLoaded(true)});
+    return()=>unsub();
+  },[useFirestore,uid,docName]);
+
+  // Persist on change (debounced)
+  useEffect(()=>{
+    if(!loaded)return;
+    if(skipNextWrite.current){skipNextWrite.current=false;return;}
+    // Always mirror to localStorage as a backup
+    save(localKey,data);
+    if(!useFirestore)return;
+    const docRef=firebase.firestore().doc(`users/${uid}/data/${docName}`);
+    const t=setTimeout(()=>{
+      docRef.set({value:data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
+        .catch(err=>console.error('Firestore save error:',err));
+    },500);
+    return()=>clearTimeout(t);
+  },[data,loaded,useFirestore,uid,docName]);
+
+  return[data,setData,loaded];
+}
+
+// Login screen shown when Firebase is configured but no user is signed in
+function LoginScreen({error}){
+  const signIn=()=>{
+    const provider=new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider).catch(err=>alert('שגיאת התחברות: '+err.message));
+  };
+  return(
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',padding:20,background:'var(--bg)'}}>
+      <div style={{background:'#fff',borderRadius:16,padding:'40px 36px',maxWidth:380,width:'100%',boxShadow:'0 8px 32px rgba(0,0,0,.08)',textAlign:'center'}}>
+        <div style={{fontSize:30,marginBottom:14}}>📊</div>
+        <h1 style={{fontSize:22,fontWeight:800,marginBottom:6}}>דשבורד עסקי</h1>
+        <p style={{color:'var(--text2)',fontSize:13,marginBottom:24}}>ניהול לידים, אירועים ותזכורות</p>
+        {error&&<div style={{background:'var(--redbg)',color:'var(--red)',padding:'10px 12px',borderRadius:8,fontSize:12,marginBottom:14}}>{error}</div>}
+        <button onClick={signIn} style={{width:'100%',padding:'12px 16px',background:'#fff',border:'1px solid var(--border)',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:10,fontFamily:'Heebo'}}>
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.79 2.72v2.26h2.9c1.7-1.56 2.68-3.87 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.9-2.26c-.8.54-1.83.86-3.06.86-2.36 0-4.36-1.59-5.07-3.73H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.93 10.69A5.43 5.43 0 0 1 3.64 9c0-.59.1-1.16.29-1.69V4.98H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.02l2.97-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A9 9 0 0 0 9 0 9 9 0 0 0 .96 4.98l2.97 2.33C4.64 5.17 6.64 3.58 9 3.58z"/></svg>
+          התחבר עם Google
+        </button>
+        <p style={{fontSize:11,color:'var(--text3)',marginTop:18,lineHeight:1.6}}>הנתונים שלך נשמרים בענן ומסונכרנים אוטומטית בין כל המכשירים</p>
+      </div>
+    </div>
+  );
+}
+
 function App(){
+  // Auth state
+  const [user,setUser]=useState(null);
+  const [authReady,setAuthReady]=useState(!window.FIREBASE_READY);
+
+  useEffect(()=>{
+    if(!window.FIREBASE_READY){setAuthReady(true);return;}
+    const unsub=firebase.auth().onAuthStateChanged(u=>{
+      setUser(u);
+      setAuthReady(true);
+    });
+    return()=>unsub();
+  },[]);
+
+  const uid=user?.uid||null;
+
+  // Synced state (Firestore if logged in, else localStorage)
+  const [leads,setLeads,leadsLoaded]=useSyncedState(uid,'leads',typeof REAL_LEADS!=='undefined'?REAL_LEADS:[],'biz_leads3');
+  const [tasks,setTasks]=useSyncedState(uid,'tasks',[],'biz_tasks');
+  const [tweaks,setTweaks]=useSyncedState(uid,'tweaks',TWEAK_DEFAULTS,'biz_tweaks');
+
   const [page,setPage]=useState(()=>localStorage.getItem('biz_page')||'dashboard');
-  const [leads,setLeads]=useState(()=>load('biz_leads3',typeof REAL_LEADS!=='undefined'?REAL_LEADS:[]));
   const [pendingTasks,setPendingTasks]=useState([]);
-  const [tweaks,setTweaks]=useState(()=>{try{return{...TWEAK_DEFAULTS,...JSON.parse(localStorage.getItem('biz_tweaks')||'{}')};}catch{return TWEAK_DEFAULTS}});
   const [showTweaks,setShowTweaks]=useState(false);
 
-  useEffect(()=>save('biz_leads3',leads),[leads]);
   useEffect(()=>localStorage.setItem('biz_page',page),[page]);
 
   useEffect(()=>{
-    if(tweaks.accentHue){
+    if(tweaks?.accentHue){
       document.documentElement.style.setProperty('--accent',`oklch(50% .19 ${tweaks.accentHue})`);
       document.documentElement.style.setProperty('--accentbg',`oklch(97% .04 ${tweaks.accentHue})`);
     }
-  },[tweaks.accentHue]);
+  },[tweaks?.accentHue]);
 
-  const applyTweak=(k,v)=>{const n={...tweaks,[k]:v};setTweaks(n);localStorage.setItem('biz_tweaks',JSON.stringify(n));window.parent.postMessage({type:'__edit_mode_set_keys',edits:{[k]:v}},'*')};
+  const applyTweak=(k,v)=>setTweaks(p=>({...p,[k]:v}));
+  const signOut=()=>{if(confirm('להתנתק?'))firebase.auth().signOut()};
+
+  // Loading screen
+  if(!authReady)return <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',color:'var(--text2)'}}>טוען...</div>;
+  // Login screen (only if Firebase is configured)
+  if(window.FIREBASE_READY&&!user)return <LoginScreen/>;
 
   const nav=[
     {id:'dashboard',l:'דשבורד',Icon:Icons.dashboard},
@@ -1061,7 +1172,14 @@ function App(){
             </div>
           ))}
         </div>
-        <div className="sidebar-foot">{leads.length} לידים · {leads.filter(l=>l.status==='closed').length} אירועים</div>
+        <div className="sidebar-foot">
+          {leads.length} לידים · {leads.filter(l=>l.status==='closed').length} אירועים
+          {user&&<div style={{marginTop:8,padding:'8px 0',borderTop:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',gap:6}}>
+            {user.photoURL&&<img src={user.photoURL} alt="" style={{width:20,height:20,borderRadius:'50%'}}/>}
+            <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:10}}>{user.displayName||user.email}</span>
+            <span onClick={signOut} style={{cursor:'pointer',color:'rgba(255,255,255,.5)',fontSize:10}} title="התנתק">⎋</span>
+          </div>}
+        </div>
       </nav>
       <main className="main">
         {page==='dashboard'&&<Dashboard leads={leads}/>}
@@ -1070,11 +1188,11 @@ function App(){
           onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}
           onDelete={id=>setLeads(p=>p.filter(l=>l.id!==id))}
           onDeleteMany={ids=>{const s=new Set(ids);setLeads(p=>p.filter(l=>!s.has(l.id)))}}
-          onAddTasks={tasks=>{setPendingTasks(t=>[...t,...tasks]);setPage('tasks')}}
+          onAddTasks={t=>{setPendingTasks(p=>[...p,...t]);setPage('tasks')}}
         />}
         {page==='events'&&<EventsPage leads={leads} onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}/>}
         {page==='analytics'&&<Analytics leads={leads}/>}
-        {page==='tasks'&&<Tasks extraTasks={pendingTasks} onClearExtra={()=>setPendingTasks([])}/>}
+        {page==='tasks'&&<Tasks tasks={tasks} setTasks={setTasks} extraTasks={pendingTasks} onClearExtra={()=>setPendingTasks([])}/>}
       </main>
       {showTweaks&&<div className="tweaks-panel">
         <div style={{fontWeight:700,marginBottom:12,fontSize:13}}>Tweaks</div>

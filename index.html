@@ -1087,14 +1087,19 @@ function useSyncedState(uid,docName,defaultValue,localKey){
   const [data,setData]=useState(defaultValue);
   const [loaded,setLoaded]=useState(false);
   const skipNextWrite=useRef(false);
+  const firestoreReady=useRef(false);
   const useFirestore=window.FIREBASE_READY&&uid;
 
   // Initial load + listener
   useEffect(()=>{
+    firestoreReady.current=false;
+    setLoaded(false);
     if(!useFirestore){
       // localStorage mode
       const local=load(localKey,defaultValue);
+      skipNextWrite.current=true;
       setData(local);
+      firestoreReady.current=true;
       setLoaded(true);
       return;
     }
@@ -1105,12 +1110,24 @@ function useSyncedState(uid,docName,defaultValue,localKey){
         skipNextWrite.current=true;
         setData(remote===undefined?defaultValue:remote);
       }else{
-        // First time - migrate localStorage if any
+        // First time on this account: migrate localStorage if there's any
         const local=load(localKey,defaultValue);
-        setData(local);
+        const hasLocal=Array.isArray(local)?local.length>0:(local&&Object.keys(local).length>0);
+        if(hasLocal){
+          // Let the writer push local data up to Firestore (no skipNextWrite)
+          setData(local);
+        }else{
+          skipNextWrite.current=true;
+          setData(defaultValue);
+        }
       }
+      firestoreReady.current=true;
       setLoaded(true);
-    },err=>{console.error('Firestore listen error:',err);setLoaded(true)});
+    },err=>{
+      console.error('Firestore listen error:',err);
+      // On error, DON'T mark firestoreReady — avoid overwriting cloud data
+      setLoaded(true);
+    });
     return()=>unsub();
   },[useFirestore,uid,docName]);
 
@@ -1121,6 +1138,7 @@ function useSyncedState(uid,docName,defaultValue,localKey){
     // Always mirror to localStorage as a backup
     save(localKey,data);
     if(!useFirestore)return;
+    if(!firestoreReady.current)return; // wait for first remote read
     const docRef=firebase.firestore().doc(`users/${uid}/data/${docName}`);
     const t=setTimeout(()=>{
       docRef.set({value:data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})

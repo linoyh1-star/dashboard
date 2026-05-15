@@ -518,7 +518,7 @@ function Dashboard({leads}){
 }
 
 // ── LEADS PAGE ───────────────────────────────────────────────────
-function LeadsPage({leads,onAdd,onEdit,onDelete,onAddTasks}){
+function LeadsPage({leads,onAdd,onEdit,onDelete,onDeleteMany,onAddTasks}){
   const now=new Date();
   const years=getYears(leads);
   const cy=now.getFullYear().toString();
@@ -530,7 +530,30 @@ function LeadsPage({leads,onAdd,onEdit,onDelete,onAddTasks}){
   const [showForm,setShowForm]=useState(false);
   const [editL,setEditL]=useState(null);
   const [viewL,setViewL]=useState(null);
+  const [selected,setSelected]=useState(()=>new Set());
   const fileInputRef=useRef(null);
+
+  const toggleSelect=id=>setSelected(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n});
+  const clearSelection=()=>setSelected(new Set());
+  const deleteSelected=()=>{
+    if(!selected.size)return;
+    if(!confirm(`למחוק ${selected.size} לידים נבחרים?`))return;
+    onDeleteMany([...selected]);
+    clearSelection();
+  };
+  const deleteAll=()=>{
+    if(!leads.length)return;
+    if(!confirm(`למחוק את כל ${leads.length} הלידים? פעולה זו אינה הפיכה.`))return;
+    if(!confirm('האם את בטוחה? זה ימחק את הכל לצמיתות.'))return;
+    onDeleteMany(leads.map(l=>l.id));
+    clearSelection();
+  };
+  const deleteFiltered=()=>{
+    if(!filtered.length)return;
+    if(!confirm(`למחוק את ${filtered.length} הלידים המוצגים בסינון הנוכחי?`))return;
+    onDeleteMany(filtered.map(l=>l.id));
+    clearSelection();
+  };
 
   const parseDate=v=>{
     if(!v)return '';
@@ -635,12 +658,18 @@ function LeadsPage({leads,onAdd,onEdit,onDelete,onAddTasks}){
     <div>
       <div className="ph">
         <div><div className="pt">לידים</div><div className="ps">{filtered.length} לידים{fYear!=='all'?` ב-${fYear}`:''} · {filtered.filter(l=>l.status==='closed').length} נסגרו</div></div>
-        <div style={{display:'flex',gap:8}}>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <button className="btn btn-p" onClick={()=>{setEditL(null);setShowForm(true)}}>+ ליד חדש</button>
           <input type="file" accept=".xlsx,.xls" ref={fileInputRef} onChange={handleExcelUpload} style={{display:'none'}}/>
           <button className="btn btn-s" onClick={()=>fileInputRef.current?.click()}>📥 העלה Excel</button>
+          <button className="btn btn-s" style={{color:'var(--red)',borderColor:'oklch(88% .06 20)'}} onClick={deleteAll} disabled={!leads.length}>🗑️ מחק הכל</button>
         </div>
       </div>
+      {selected.size>0&&<div style={{background:'var(--accentbg)',border:'1px solid oklch(91% .05 22)',borderRadius:8,padding:'10px 14px',marginBottom:12,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+        <span style={{fontWeight:600,fontSize:13}}>נבחרו {selected.size} לידים</span>
+        <button className="btn btn-sm" style={{background:'var(--red)',color:'#fff'}} onClick={deleteSelected}>🗑️ מחק נבחרים</button>
+        <button className="btn btn-sm btn-s" onClick={clearSelection}>בטל בחירה</button>
+      </div>}
       <div className="fb">
         <input className="fi" style={{width:180}} placeholder="חיפוש..." value={search} onChange={e=>setSearch(e.target.value)}/>
         <select className="fi" style={{width:110}} value={fYear} onChange={e=>setFYear(e.target.value)}>
@@ -659,11 +688,15 @@ function LeadsPage({leads,onAdd,onEdit,onDelete,onAddTasks}){
       </div>
       <div className="card"><div style={{overflowX:'auto'}}>
         <table>
-          <thead><tr><th>שם ליד</th><th>כלה</th><th>מקור</th><th>סוג</th><th>סטטוס</th><th>תאריך פניה</th><th>תאריך אירוע</th><th>לתשלום</th><th>יתרה</th><th>הערות</th><th style={{width:80}}></th></tr></thead>
+          <thead><tr>
+            <th style={{width:36}}><input type="checkbox" checked={filtered.length>0&&filtered.every(l=>selected.has(l.id))} onChange={e=>{const all=new Set(selected);if(e.target.checked)filtered.forEach(l=>all.add(l.id));else filtered.forEach(l=>all.delete(l.id));setSelected(all)}} style={{cursor:'pointer'}}/></th>
+            <th>שם ליד</th><th>כלה</th><th>מקור</th><th>סוג</th><th>סטטוס</th><th>תאריך פניה</th><th>תאריך אירוע</th><th>לתשלום</th><th>יתרה</th><th>הערות</th><th style={{width:80}}></th>
+          </tr></thead>
           <tbody>{filtered.map(l=>{
             const total=l.amount||0;
             const balance=l.advanceDone?(total-(l.advance||0)):total;
-            return <tr key={l.id}>
+            return <tr key={l.id} style={selected.has(l.id)?{background:'var(--accentbg)'}:{}}>
+              <td><input type="checkbox" checked={selected.has(l.id)} onChange={()=>toggleSelect(l.id)} style={{cursor:'pointer'}}/></td>
               <td><div style={{fontWeight:600,fontSize:13}}>{l.name}</div></td>
               <td style={{fontSize:12,color:'var(--text2)'}}>{l.brideName||'—'}</td>
               <td><SourceDot source={l.source}/></td>
@@ -1008,6 +1041,7 @@ function App(){
           onAdd={l=>setLeads(p=>[l,...p])}
           onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}
           onDelete={id=>setLeads(p=>p.filter(l=>l.id!==id))}
+          onDeleteMany={ids=>{const s=new Set(ids);setLeads(p=>p.filter(l=>!s.has(l.id)))}}
           onAddTasks={tasks=>{setPendingTasks(t=>[...t,...tasks]);setPage('tasks')}}
         />}
         {page==='events'&&<EventsPage leads={leads} onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}/>}

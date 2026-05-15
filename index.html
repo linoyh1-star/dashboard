@@ -1213,6 +1213,18 @@ function App(){
   const applyTweak=(k,v)=>setTweaks(p=>({...p,[k]:v}));
   const signOut=()=>{if(confirm('להתנתק?'))firebase.auth().signOut()};
 
+  // Recovery: detect when local backup has more data than what's loaded
+  const [dismissedRecovery,setDismissedRecovery]=useState(false);
+  const backupLeads=useMemo(()=>load('biz_leads3',[]),[user?.uid,dismissedRecovery]);
+  const backupTasks=useMemo(()=>load('biz_tasks',[]),[user?.uid,dismissedRecovery]);
+  const showRecovery=user&&!dismissedRecovery&&(backupLeads.length>leads.length||backupTasks.length>tasks.length);
+  const restoreFromBackup=()=>{
+    if(backupLeads.length>leads.length)setLeads(backupLeads);
+    if(backupTasks.length>tasks.length)setTasks(backupTasks);
+    setDismissedRecovery(true);
+    setTimeout(()=>alert('שוחזר! הנתונים מועלים לענן... מסתנכרן עכשיו לכל המכשירים.'),300);
+  };
+
   // Loading screen
   if(!authReady)return <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',color:'var(--text2)'}}>טוען...</div>;
   // Login screen (only if Firebase is configured)
@@ -1252,6 +1264,15 @@ function App(){
         </div>
       </nav>
       <main className="main">
+        {showRecovery&&<div style={{background:'oklch(97% .04 80)',border:'1px solid oklch(88% .08 80)',borderRadius:10,padding:'14px 16px',marginBottom:18,display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+          <div style={{fontSize:22}}>💾</div>
+          <div style={{flex:1,minWidth:200}}>
+            <div style={{fontWeight:700,color:'#7a5208',fontSize:14}}>נמצא גיבוי מקומי</div>
+            <div style={{color:'#7a5208',fontSize:12,marginTop:2}}>במחשב הזה יש {backupLeads.length} לידים ו-{backupTasks.length} משימות שלא נמצאים בענן. לשחזר?</div>
+          </div>
+          <button className="btn btn-sm" style={{background:'#7a5208',color:'#fff'}} onClick={restoreFromBackup}>שחזר לענן</button>
+          <button className="btn btn-sm btn-s" onClick={()=>setDismissedRecovery(true)}>בטל</button>
+        </div>}
         {page==='dashboard'&&<Dashboard leads={leads}/>}
         {page==='leads'&&<LeadsPage leads={leads}
           onAdd={l=>setLeads(p=>[l,...p])}

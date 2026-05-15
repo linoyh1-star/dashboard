@@ -556,33 +556,58 @@ function LeadsPage({leads,onAdd,onEdit,onDelete,onDeleteMany,onAddTasks}){
   };
 
   const parseDate=v=>{
-    if(!v)return '';
-    if(v instanceof Date)return v.toISOString().split('T')[0];
+    if(v===null||v===undefined||v==='')return '';
+    if(v instanceof Date){
+      const yy=v.getFullYear(),mm=String(v.getMonth()+1).padStart(2,'0'),dd=String(v.getDate()).padStart(2,'0');
+      return `${yy}-${mm}-${dd}`;
+    }
     if(typeof v==='number'){
       // Excel serial date: days since 1899-12-30
       const d=new Date(Math.round((v-25569)*86400*1000));
-      return d.toISOString().split('T')[0];
+      const yy=d.getUTCFullYear(),mm=String(d.getUTCMonth()+1).padStart(2,'0'),dd=String(d.getUTCDate()).padStart(2,'0');
+      return `${yy}-${mm}-${dd}`;
     }
     const s=String(v).trim();
+    if(!s)return '';
     // DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY
-    const m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+    const m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);
     if(m){
       let[,d,mo,y]=m;
       if(y.length===2)y='20'+y;
       return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
     }
-    // YYYY-MM-DD already
+    // YYYY-MM-DD
     if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
     return '';
   };
 
   const mapStatus=v=>{
     const s=String(v||'').trim();
-    if(s.includes('נסגר')&&!s.includes('לא'))return 'closed';
-    if(s.includes('לא נסגר')||s==='לא')return 'lost';
+    if(s==='נסגר'||(s.includes('נסגר')&&!s.includes('לא')))return 'closed';
+    if(s.includes('לא נסגר')||s==='לא'||s==='לא נסגרה')return 'lost';
     if(s.includes('פולו'))return 'follow';
     if(s.includes('פתוח'))return 'open';
     return 'open';
+  };
+
+  // Map source values to the standard SOURCES list
+  const mapSource=v=>{
+    const s=String(v||'').trim();
+    if(!s)return 'אחר';
+    if(s.includes('פייסבוק')&&s.includes('אורגני'))return 'פייסבוק אורגני';
+    if(s.includes('אינסטגרם'))return 'אינסטגרם אורגני';
+    if(s.includes('מטא')||s.includes('פייסבוק ממומן'))return 'קמפיין מטא';
+    if(s.includes('האתר שלי')||s==='אתר שלי')return 'אתר שלי';
+    if(s.includes('מפה')||s.includes('חבר'))return 'מפה לאוזן';
+    return 'אחר';
+  };
+
+  // Look up cell value by trying multiple header name variations
+  const pick=(row,...keys)=>{
+    for(const k of keys){
+      if(row[k]!==undefined&&row[k]!==null&&row[k]!=='')return row[k];
+    }
+    return '';
   };
 
   const handleExcelUpload=e=>{
@@ -593,23 +618,26 @@ function LeadsPage({leads,onAdd,onEdit,onDelete,onDeleteMany,onAddTasks}){
         const data=new Uint8Array(evt.target.result);
         const workbook=XLSX.read(data,{type:'array',cellDates:true});
         const sheet=workbook.Sheets[workbook.SheetNames[0]];
-        const rows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});
+        const rows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:true});
         const today=new Date().toISOString().split('T')[0];
         const newLeads=rows.map(row=>{
-          const createdAt=parseDate(row['תאריך'])||today;
-          const eventDate=parseDate(row['תאריך האירוע']);
+          const createdAt=parseDate(pick(row,'תאריך פניה','תאריך','תאריך הפנייה'))||today;
+          const eventDate=parseDate(pick(row,'תאריך אירוע','תאריך האירוע'));
+          const amount=pick(row,'סכום עסקה','הצעת מחיר','סכום');
           return{
             id:uid(),
-            name:String(row['שם ליד']||'').trim(),
-            source:String(row['מקור']||'קמפיין מטא').trim(),
-            eventType:String(row['סוג אירוע']||'רווקות').trim(),
-            status:mapStatus(row['סטטוס']),
-            amount:row['הצעת מחיר']?parseInt(row['הצעת מחיר'],10)||0:0,
+            name:String(pick(row,'שם ליד','שם','שם לקוח')||'').trim(),
+            source:mapSource(pick(row,'איך הגיעו אליי','מקור','source')),
+            eventType:String(pick(row,'סוג אירוע?','סוג אירוע','סוג')||'רווקות').trim(),
+            status:mapStatus(pick(row,'S','סטטוס','status')),
+            amount:amount?parseInt(amount,10)||0:0,
             eventDate,
-            location:String(row['מקום']||'').trim(),
-            notes:String(row['הערות']||'').trim(),
+            location:String(pick(row,'מיקום האירוע','מקום','מיקום')||'').trim(),
+            notes:String(pick(row,'הערות','notes')||'').trim(),
             createdAt,
-            lostReason:'',answered:'',advance:0,advanceDone:false,brideName:'',guideName:''
+            lostReason:String(pick(row,'למה לא נסגר?','סיבה')||'').trim(),
+            answered:String(pick(row,'ענה/לא ענה','ענה')||'').trim(),
+            advance:0,advanceDone:false,brideName:'',guideName:''
           };
         }).filter(l=>l.name);
         newLeads.forEach(onAdd);

@@ -22,7 +22,7 @@
 
 - React 18 + Babel Standalone
 - Chart.js
-- אחסון מקומי (localStorage) — הנתונים נשמרים בדפדפן
+- Firebase Auth (Google Sign-In) + Firestore (סנכרון בין מכשירים)
 
 ## פריסה
 

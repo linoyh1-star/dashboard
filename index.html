@@ -595,8 +595,47 @@ function Dashboard({leads}){
   );
 }
 
-// ── LEADS PAGE ───────────────────────────────────────────────────
+// ── AUTO TASKS ───────────────────────────────────────────────────
 const AUTO_TASK_KINDS=['follow','questionnaire-send','questionnaire-verify','receipt'];
+const EVENT_TASK_KINDS=['questionnaire-send','questionnaire-verify','receipt'];
+// Legacy title prefixes (for tasks created before leadId was added)
+const TASK_TITLE_PREFIXES={
+  follow:'פולו אפ — ',
+  'questionnaire-send':'שאלון לחתן — ',
+  'questionnaire-verify':'וידוא שאלונים — ',
+  receipt:'שליחת קבלה — ',
+};
+// Extract lead name from a legacy task title
+function extractLeadNameFromTitle(t){
+  for(const kind of Object.keys(TASK_TITLE_PREFIXES)){
+    const prefix=TASK_TITLE_PREFIXES[kind];
+    if(t.title?.startsWith(prefix))return{kind,name:t.title.slice(prefix.length).trim()};
+  }
+  return null;
+}
+// True if a task should stay (lead status still matches the task kind)
+function isTaskStillValid(t,leadById,leadsArr){
+  if(t.done)return true;
+  // Modern tasks with leadId
+  if(t.leadId&&AUTO_TASK_KINDS.includes(t.kind)){
+    const lead=leadById.get(t.leadId);
+    if(!lead)return false;
+    if(t.kind==='follow')return lead.status==='follow';
+    if(EVENT_TASK_KINDS.includes(t.kind))return lead.status==='closed'&&!!lead.eventDate;
+    return true;
+  }
+  // Legacy tasks: try to match by title prefix + lead name
+  const info=extractLeadNameFromTitle(t);
+  if(info){
+    const matched=leadsArr.filter(l=>l.name===info.name||l.brideName===info.name);
+    if(matched.length===0)return true; // can't decide — keep
+    if(info.kind==='follow')return matched.some(l=>l.status==='follow');
+    if(EVENT_TASK_KINDS.includes(info.kind))return matched.some(l=>l.status==='closed'&&!!l.eventDate);
+  }
+  return true;
+}
+
+// ── LEADS PAGE ───────────────────────────────────────────────────
 function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
   const now=new Date();
   const years=getYears(leads);
@@ -761,9 +800,19 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
       }
       // For 'open' and 'lost' — no new tasks (cleanup only)
 
-      // Atomic update: remove pending auto-tasks for this lead + add new ones
+      // Atomic update: remove obsolete auto-tasks for this lead + add new ones
       setTasks(p=>{
-        const cleaned=p.filter(t=>!(t.leadId===lead.id&&!t.done&&AUTO_TASK_KINDS.includes(t.kind)));
+        const cleaned=p.filter(t=>{
+          if(t.done)return true;
+          // Match by leadId (modern tasks)
+          if(t.leadId===lead.id&&AUTO_TASK_KINDS.includes(t.kind))return false;
+          // Match by title (legacy tasks without leadId, same lead name)
+          if(!t.leadId){
+            const info=extractLeadNameFromTitle(t);
+            if(info&&(info.name===lead.name||info.name===lead.brideName))return false;
+          }
+          return true;
+        });
         return[...newTasks,...cleaned];
       });
     }
@@ -1243,6 +1292,16 @@ function App(){
   useEffect(()=>localStorage.setItem('biz_page',page),[page]);
   // Close sidebar on page change (mobile)
   useEffect(()=>setSidebarOpen(false),[page]);
+
+  // Auto-clean tasks: remove tasks that no longer match their lead's status
+  useEffect(()=>{
+    if(!leads||!tasks||!leads.length||!tasks.length)return;
+    const leadById=new Map(leads.map(l=>[l.id,l]));
+    const cleaned=tasks.filter(t=>isTaskStillValid(t,leadById,leads));
+    if(cleaned.length!==tasks.length){
+      setTasks(cleaned);
+    }
+  },[leads,tasks]);
 
   useEffect(()=>{
     if(tweaks?.accentHue){

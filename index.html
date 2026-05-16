@@ -596,7 +596,8 @@ function Dashboard({leads}){
 }
 
 // ── LEADS PAGE ───────────────────────────────────────────────────
-function LeadsPage({leads,onAdd,onEdit,onDelete,onDeleteMany,onAddTasks}){
+const AUTO_TASK_KINDS=['follow','questionnaire-send','questionnaire-verify','receipt'];
+function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
   const now=new Date();
   const years=getYears(leads);
   const cy=now.getFullYear().toString();
@@ -741,19 +742,31 @@ function LeadsPage({leads,onAdd,onEdit,onDelete,onDeleteMany,onAddTasks}){
     const prev=editL;
     if(editL)onEdit(lead);else onAdd(lead);
 
-    // Auto-tasks
-    const newTasks=[];
-    // Follow-up task — single task at +2 days. Auto-renews when marked done (if lead still in follow status)
-    if(lead.status==='follow'&&(!prev||prev.status!=='follow')){
-      newTasks.push({id:uid(),leadId:lead.id,kind:'follow',title:`פולו אפ — ${lead.name}`,cat:'פולו אפ',due:addDays(new Date(),2),notes:'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס',done:false});
+    const statusChanged=!prev||prev.status!==lead.status;
+    const eventDateChanged=!prev||prev.eventDate!==lead.eventDate;
+
+    // Sync auto-tasks only when status or eventDate changed
+    if(statusChanged||(lead.status==='closed'&&eventDateChanged)){
+      const newTasks=[];
+
+      // Follow-up: single task at +2 days. Auto-renews when marked done (handled in Tasks component)
+      if(lead.status==='follow'){
+        newTasks.push({id:uid(),leadId:lead.id,kind:'follow',title:`פולו אפ — ${lead.name}`,cat:'פולו אפ',due:addDays(new Date(),2),notes:'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס',done:false});
+      }
+      // Event: 3 reminders (only if closed with a date)
+      else if(lead.status==='closed'&&lead.eventDate){
+        newTasks.push({id:uid(),leadId:lead.id,kind:'questionnaire-send',title:`שאלון לחתן — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),-7),notes:'שלחי שאלון לחתן ובקשי מילוי פרטים לפני האירוע',done:false});
+        newTasks.push({id:uid(),leadId:lead.id,kind:'questionnaire-verify',title:`וידוא שאלונים — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),-1),notes:'ודאי שכל השאלונים מולאו ויש לך את כל המידע לאירוע',done:false});
+        newTasks.push({id:uid(),leadId:lead.id,kind:'receipt',title:`שליחת קבלה — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),1),notes:'שלחי קבלה ללקוחה לאחר האירוע',done:false});
+      }
+      // For 'open' and 'lost' — no new tasks (cleanup only)
+
+      // Atomic update: remove pending auto-tasks for this lead + add new ones
+      setTasks(p=>{
+        const cleaned=p.filter(t=>!(t.leadId===lead.id&&!t.done&&AUTO_TASK_KINDS.includes(t.kind)));
+        return[...newTasks,...cleaned];
+      });
     }
-    // Event tasks (only when newly closed with a date, or date changed)
-    if(lead.status==='closed'&&lead.eventDate&&(!prev||prev.status!=='closed'||prev.eventDate!==lead.eventDate)){
-      newTasks.push({id:uid(),leadId:lead.id,kind:'questionnaire-send',title:`שאלון לחתן — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),-7),notes:'שלחי שאלון לחתן ובקשי מילוי פרטים לפני האירוע',done:false});
-      newTasks.push({id:uid(),leadId:lead.id,kind:'questionnaire-verify',title:`וידוא שאלונים — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),-1),notes:'ודאי שכל השאלונים מולאו ויש לך את כל המידע לאירוע',done:false});
-      newTasks.push({id:uid(),leadId:lead.id,kind:'receipt',title:`שליחת קבלה — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),1),notes:'שלחי קבלה ללקוחה לאחר האירוע',done:false});
-    }
-    if(newTasks.length)onAddTasks(newTasks);
 
     setShowForm(false);setEditL(null);
   };
@@ -1030,17 +1043,10 @@ function Analytics({leads}){
 }
 
 // ── TASKS PAGE ───────────────────────────────────────────────────
-function Tasks({tasks,setTasks,leads,extraTasks,onClearExtra}){
+function Tasks({tasks,setTasks,leads}){
   const [showForm,setShowForm]=useState(false);
   const [filter,setFilter]=useState('active');
   const [form,setForm]=useState({title:'',cat:'פולו אפ',due:'',notes:'',done:false});
-
-  useEffect(()=>{
-    if(extraTasks&&extraTasks.length){
-      setTasks(p=>[...extraTasks,...p]);
-      onClearExtra();
-    }
-  },[extraTasks]);
 
   const sf=(k,v)=>setForm(p=>({...p,[k]:v}));
   const addTask=()=>{if(!form.title.trim())return;setTasks(p=>[{...form,id:uid()},...p]);setForm({title:'',cat:'פולו אפ',due:'',notes:'',done:false});setShowForm(false)};
@@ -1231,7 +1237,6 @@ function App(){
   const [tweaks,setTweaks]=useSyncedState(uid,'tweaks',TWEAK_DEFAULTS,'biz_tweaks');
 
   const [page,setPage]=useState(()=>localStorage.getItem('biz_page')||'dashboard');
-  const [pendingTasks,setPendingTasks]=useState([]);
   const [showTweaks,setShowTweaks]=useState(false);
   const [sidebarOpen,setSidebarOpen]=useState(false);
 
@@ -1311,15 +1316,15 @@ function App(){
         </div>}
         {page==='dashboard'&&<Dashboard leads={leads}/>}
         {page==='leads'&&<LeadsPage leads={leads}
+          setTasks={setTasks}
           onAdd={l=>setLeads(p=>[l,...p])}
           onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}
-          onDelete={id=>setLeads(p=>p.filter(l=>l.id!==id))}
-          onDeleteMany={ids=>{const s=new Set(ids);setLeads(p=>p.filter(l=>!s.has(l.id)))}}
-          onAddTasks={t=>{setPendingTasks(p=>[...p,...t]);setPage('tasks')}}
+          onDelete={id=>{setLeads(p=>p.filter(l=>l.id!==id));setTasks(p=>p.filter(t=>t.leadId!==id))}}
+          onDeleteMany={ids=>{const s=new Set(ids);setLeads(p=>p.filter(l=>!s.has(l.id)));setTasks(p=>p.filter(t=>!s.has(t.leadId)))}}
         />}
         {page==='events'&&<EventsPage leads={leads} onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}/>}
         {page==='analytics'&&<Analytics leads={leads}/>}
-        {page==='tasks'&&<Tasks tasks={tasks} setTasks={setTasks} leads={leads} extraTasks={pendingTasks} onClearExtra={()=>setPendingTasks([])}/>}
+        {page==='tasks'&&<Tasks tasks={tasks} setTasks={setTasks} leads={leads}/>}
       </main>
       {showTweaks&&<div className="tweaks-panel">
         <div style={{fontWeight:700,marginBottom:12,fontSize:13}}>Tweaks</div>

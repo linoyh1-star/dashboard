@@ -848,7 +848,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
         <table>
           <thead><tr>
             <th style={{width:36}}><input type="checkbox" checked={filtered.length>0&&filtered.every(l=>selected.has(l.id))} onChange={e=>{const all=new Set(selected);if(e.target.checked)filtered.forEach(l=>all.add(l.id));else filtered.forEach(l=>all.delete(l.id));setSelected(all)}} style={{cursor:'pointer'}}/></th>
-            <th>שם ליד</th><th>תאריך פניה</th><th>סטטוס</th><th>מקור</th><th>סוג</th><th>תאריך אירוע</th><th>לתשלום</th><th>הערות</th><th style={{width:80}}></th>
+            <th>שם ליד</th><th>תאריך פניה</th><th>סטטוס</th><th>מקור</th><th>סוג</th><th>תאריך אירוע</th><th>לתשלום</th><th>שם הכלה</th><th>הערות</th><th style={{width:80}}></th>
           </tr></thead>
           <tbody>{filtered.map(l=>{
             const total=l.amount||0;
@@ -861,6 +861,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
               <td><span style={{fontSize:12,color:'var(--text2)'}}>{l.eventType}</span></td>
               <td style={{fontSize:12,whiteSpace:'nowrap'}}>{l.eventDate?fmt(l.eventDate):'—'}</td>
               <td style={{fontWeight:total?600:400,color:total?'var(--green)':'var(--text3)'}}>{total?`₪${total.toLocaleString()}`:'—'}</td>
+              <td style={{fontSize:12,color:'var(--text2)'}}>{l.brideName||'—'}</td>
               <td style={{fontSize:11,color:'var(--text2)',maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={l.notes}>{l.notes||'—'}</td>
               <td><div style={{display:'flex',gap:3}}>
                 {l.status==='closed'&&<button className="btn btn-icon btn-g" onClick={()=>setViewL(l)} title="פרטים">↗</button>}

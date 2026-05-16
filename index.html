@@ -645,6 +645,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
   const [fSource,setFSource]=useState('all');
   const [fType,setFType]=useState('all');
   const [fYear,setFYear]=useState(cy);
+  const [fMonth,setFMonth]=useState('all');
   const [showForm,setShowForm]=useState(false);
   const [editL,setEditL]=useState(null);
   const [viewL,setViewL]=useState(null);
@@ -657,19 +658,6 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
     if(!selected.size)return;
     if(!confirm(`למחוק ${selected.size} לידים נבחרים?`))return;
     onDeleteMany([...selected]);
-    clearSelection();
-  };
-  const deleteAll=()=>{
-    if(!leads.length)return;
-    if(!confirm(`למחוק את כל ${leads.length} הלידים? פעולה זו אינה הפיכה.`))return;
-    if(!confirm('האם את בטוחה? זה ימחק את הכל לצמיתות.'))return;
-    onDeleteMany(leads.map(l=>l.id));
-    clearSelection();
-  };
-  const deleteFiltered=()=>{
-    if(!filtered.length)return;
-    if(!confirm(`למחוק את ${filtered.length} הלידים המוצגים בסינון הנוכחי?`))return;
-    onDeleteMany(filtered.map(l=>l.id));
     clearSelection();
   };
 
@@ -773,6 +761,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
     if(fSource!=='all'&&l.source!==fSource)return false;
     if(fType!=='all'&&l.eventType!==fType)return false;
     if(fYear!=='all'&&!l.createdAt?.startsWith(fYear))return false;
+    if(fMonth!=='all'&&l.createdAt?.slice(5,7)!==fMonth)return false;
     const q=search.toLowerCase();
     return !q||l.name.toLowerCase().includes(q)||(l.location||'').includes(q)||(l.brideName||'').includes(q);
   }).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -828,7 +817,6 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
           <button className="btn btn-p" onClick={()=>{setEditL(null);setShowForm(true)}}>+ ליד חדש</button>
           <input type="file" accept=".xlsx,.xls" ref={fileInputRef} onChange={handleExcelUpload} style={{display:'none'}}/>
           <button className="btn btn-s" onClick={()=>fileInputRef.current?.click()}>📥 העלה Excel</button>
-          <button className="btn btn-s" style={{color:'var(--red)',borderColor:'oklch(88% .06 20)'}} onClick={deleteAll} disabled={!leads.length}>🗑️ מחק הכל</button>
         </div>
       </div>
       {selected.size>0&&<div style={{background:'var(--accentbg)',border:'1px solid oklch(91% .05 22)',borderRadius:8,padding:'10px 14px',marginBottom:12,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
@@ -840,6 +828,10 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
         <input className="fi" style={{width:180}} placeholder="חיפוש..." value={search} onChange={e=>setSearch(e.target.value)}/>
         <select className="fi" style={{width:110}} value={fYear} onChange={e=>setFYear(e.target.value)}>
           <option value="all">כל השנים</option>{years.map(y=><option key={y} value={String(y)}>{y}</option>)}
+        </select>
+        <select className="fi" style={{width:130}} value={fMonth} onChange={e=>setFMonth(e.target.value)}>
+          <option value="all">כל החודשים</option>
+          {MONTHS.map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
         </select>
         <select className="fi" style={{width:120}} value={fStatus} onChange={e=>setFStatus(e.target.value)}>
           <option value="all">כל הסטטוס</option><option value="closed">נסגר</option><option value="lost">לא נסגר</option><option value="follow">פולו אפ</option><option value="open">פתוח</option>
@@ -856,23 +848,20 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
         <table>
           <thead><tr>
             <th style={{width:36}}><input type="checkbox" checked={filtered.length>0&&filtered.every(l=>selected.has(l.id))} onChange={e=>{const all=new Set(selected);if(e.target.checked)filtered.forEach(l=>all.add(l.id));else filtered.forEach(l=>all.delete(l.id));setSelected(all)}} style={{cursor:'pointer'}}/></th>
-            <th>שם ליד</th><th>כלה</th><th>מקור</th><th>סוג</th><th>סטטוס</th><th>תאריך פניה</th><th>תאריך אירוע</th><th>לתשלום</th><th>יתרה</th><th>הערות</th><th style={{width:80}}></th>
+            <th>שם ליד</th><th>תאריך פניה</th><th>סטטוס</th><th>מקור</th><th>סוג</th><th>תאריך אירוע</th><th>לתשלום</th><th>הערות</th><th style={{width:80}}></th>
           </tr></thead>
           <tbody>{filtered.map(l=>{
             const total=l.amount||0;
-            const balance=l.advanceDone?(total-(l.advance||0)):total;
             return <tr key={l.id} style={selected.has(l.id)?{background:'var(--accentbg)'}:{}}>
               <td><input type="checkbox" checked={selected.has(l.id)} onChange={()=>toggleSelect(l.id)} style={{cursor:'pointer'}}/></td>
               <td><div style={{fontWeight:600,fontSize:13}}>{l.name}</div></td>
-              <td style={{fontSize:12,color:'var(--text2)'}}>{l.brideName||'—'}</td>
+              <td style={{fontSize:12,color:'var(--text2)',whiteSpace:'nowrap'}}>{fmt(l.createdAt)}</td>
+              <td><SBadge status={l.status}/></td>
               <td><SourceDot source={l.source}/></td>
               <td><span style={{fontSize:12,color:'var(--text2)'}}>{l.eventType}</span></td>
-              <td><SBadge status={l.status}/></td>
-              <td style={{fontSize:12,color:'var(--text2)',whiteSpace:'nowrap'}}>{fmt(l.createdAt)}</td>
               <td style={{fontSize:12,whiteSpace:'nowrap'}}>{l.eventDate?fmt(l.eventDate):'—'}</td>
               <td style={{fontWeight:total?600:400,color:total?'var(--green)':'var(--text3)'}}>{total?`₪${total.toLocaleString()}`:'—'}</td>
-              <td style={{fontWeight:600,color:balance>0?'var(--red)':balance===0&&total>0?'var(--green)':'var(--text3)'}}>{total?`₪${balance.toLocaleString()}`:'—'}</td>
-              <td style={{fontSize:11,color:'var(--text2)',maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={l.notes}>{l.notes||'—'}</td>
+              <td style={{fontSize:11,color:'var(--text2)',maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={l.notes}>{l.notes||'—'}</td>
               <td><div style={{display:'flex',gap:3}}>
                 {l.status==='closed'&&<button className="btn btn-icon btn-g" onClick={()=>setViewL(l)} title="פרטים">↗</button>}
                 <button className="btn btn-icon btn-g" onClick={()=>{setEditL(l);setShowForm(true)}} title="עריכה">✎</button>

@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>דשבורד עסקי</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#1a1714">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="דשבורד">
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
@@ -186,10 +193,10 @@ const {useState,useEffect,useRef,useMemo} = React;
 // ── CONSTANTS ────────────────────────────────────────────────────
 const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 const SOURCES=['פייסבוק אורגני','אינסטגרם אורגני','מפה לאוזן','קמפיין מטא','אתר שלי','אחר'];
-const EVENT_TYPES=['רווקות','יומולדת','הרמת כוסית','קבוצה מאורגנת','מקווה','אירוע חברה','יום גיבוש','אחר'];
+const EVENT_TYPES=['רווקות','יומולדת','הרמת כוסית','קבוצה מאורגנת','מקווה','אירוע חברה','יום גיבוש','הפרשת חלה','אחר'];
 const SRC_HEX={'פייסבוק אורגני':'#3b5998','אינסטגרם אורגני':'#c13584','מפה לאוזן':'#2d8a5e','קמפיין מטא':'#c85c3a','אתר שלי':'#2d7fa8','אחר':'#888'};
 const SRC_CSS={'פייסבוק אורגני':'oklch(50% .19 240)','אינסטגרם אורגני':'oklch(52% .2 330)','מפה לאוזן':'oklch(50% .15 145)','קמפיין מטא':'oklch(50% .19 22)','אתר שלי':'oklch(50% .17 200)','אחר':'oklch(55% .04 0)'};
-const TYPE_CSS={'רווקות':'oklch(52% .2 330)','יומולדת':'oklch(60% .17 80)','הרמת כוסית':'oklch(50% .15 145)','קבוצה מאורגנת':'oklch(50% .17 200)','מקווה':'oklch(50% .19 240)','אירוע חברה':'oklch(50% .19 22)','יום גיבוש':'oklch(55% .14 160)','אחר':'oklch(55% .04 0)'};
+const TYPE_CSS={'רווקות':'oklch(52% .2 330)','יומולדת':'oklch(60% .17 80)','הרמת כוסית':'oklch(50% .15 145)','קבוצה מאורגנת':'oklch(50% .17 200)','מקווה':'oklch(50% .19 240)','אירוע חברה':'oklch(50% .19 22)','יום גיבוש':'oklch(55% .14 160)','הפרשת חלה':'oklch(55% .15 60)','אחר':'oklch(55% .04 0)'};
 const TASK_CATS=['פולו אפ','אירוע קרוב','הצעת מחיר','שיווק','כללי'];
 const CAT_CSS={'פולו אפ':'var(--blue)','אירוע קרוב':'var(--green)','הצעת מחיר':'var(--accent)','שיווק':'oklch(52% .2 330)','כללי':'var(--text2)'};
 const REVENUE_2025=[0,0,0,0,0,0,0,0,0,0,0,0];
@@ -427,15 +434,18 @@ function Dashboard({leads}){
   const filtered=selYear==='הכל'?leads:leads.filter(l=>l.createdAt?.startsWith(selYear));
   const closed=filtered.filter(l=>l.status==='closed');
   const lost=filtered.filter(l=>l.status==='lost');
-  const totalRev=selYear==='2025'?REVENUE_2025.reduce((s,v)=>s+v,0):closed.reduce((s,l)=>s+(l.amount||0),0);
+
+  // Revenue by event date (not creation date)
+  const eventLeadsInYear=leads.filter(l=>l.status==='closed'&&l.eventDate&&(selYear==='הכל'||l.eventDate.startsWith(selYear)));
+  const totalRev=eventLeadsInYear.reduce((s,l)=>s+(l.amount||0),0);
   const conv=filtered.length?Math.round(closed.length/filtered.length*100):0;
 
   // Monthly chart
   const mLabels=MONTHS.map(m=>m.slice(0,3));
   const mLeads=Array(12).fill(0);const mClosed=Array(12).fill(0);const mRev=Array(12).fill(0);
   filtered.forEach(l=>{const m=new Date(l.createdAt).getMonth();if(m>=0&&m<12){mLeads[m]++;if(l.status==='closed'){mClosed[m]++;}}});
-  if(selYear==='2025')REVENUE_2025.forEach((v,i)=>{mRev[i]=v});
-  else closed.forEach(l=>{const m=new Date(l.createdAt).getMonth();if(m>=0&&m<12)mRev[m]+=(l.amount||0)});
+  // Revenue uses eventDate (when the event happens), not when the lead was closed
+  eventLeadsInYear.forEach(l=>{const m=new Date(l.eventDate).getMonth();if(m>=0&&m<12)mRev[m]+=(l.amount||0)});
 
   // Sources
   const srcEntries=SOURCES.map(s=>({s,n:filtered.filter(l=>l.source===s).length})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n);
@@ -445,12 +455,13 @@ function Dashboard({leads}){
   const msEnd=new Date(now.getFullYear(),now.getMonth()+1,0);
   const thisMonthEvs=leads.filter(l=>l.status==='closed'&&l.eventDate).filter(l=>{const d=new Date(l.eventDate);return d>=msStart&&d<=msEnd}).sort((a,b)=>new Date(a.eventDate)-new Date(b.eventDate));
 
-  // YoY comparison
+  // YoY comparison (revenue by eventDate; lead counts by createdAt)
   const getYS=y=>{
     const yl=leads.filter(l=>l.createdAt?.startsWith(y));
     const cl=yl.filter(l=>l.status==='closed');
-    const rev=y==='2025'?REVENUE_2025.reduce((s,v)=>s+v,0):cl.reduce((s,l)=>s+(l.amount||0),0);
-    return{total:yl.length,closed:cl.length,lost:yl.filter(l=>l.status==='lost').length,rev,conv:yl.length?Math.round(cl.length/yl.length*100):0,avg:cl.length?Math.round(rev/cl.length):0};
+    const eventsInY=leads.filter(l=>l.status==='closed'&&l.eventDate?.startsWith(y));
+    const rev=eventsInY.reduce((s,l)=>s+(l.amount||0),0);
+    return{total:yl.length,closed:cl.length,lost:yl.filter(l=>l.status==='lost').length,rev,conv:yl.length?Math.round(cl.length/yl.length*100):0,avg:eventsInY.length?Math.round(rev/eventsInY.length):0};
   };
   const allYears=[...years].sort((a,b)=>a-b).map(String).filter(y=>y!=='הכל');
   const yoyRows=allYears.map((y,i)=>{
@@ -541,9 +552,12 @@ function Dashboard({leads}){
       {(()=>{
         const yr=selYear==='הכל'?cy:selYear;
         const monthlyRows=MONTHS.map((name,i)=>{
+          // Lead counts by createdAt (when leads came in)
           const ml=leads.filter(l=>{const d=new Date(l.createdAt);return d.getFullYear()===+yr&&d.getMonth()===i});
           const cl=ml.filter(l=>l.status==='closed');
-          const rev=yr==='2025'?REVENUE_2025[i]:cl.reduce((s,l)=>s+(l.amount||0),0);
+          // Revenue by eventDate (when the event happens)
+          const evMonth=leads.filter(l=>l.status==='closed'&&l.eventDate&&l.eventDate.startsWith(yr)&&new Date(l.eventDate).getMonth()===i);
+          const rev=evMonth.reduce((s,l)=>s+(l.amount||0),0);
           const isFuture=now.getFullYear()===+yr&&i>now.getMonth();
           return{name,total:ml.length,closed:cl.length,lost:ml.filter(l=>l.status==='lost').length,rev,conv:ml.length?Math.round(cl.length/ml.length*100):0,isFuture};
         });
@@ -729,11 +743,9 @@ function LeadsPage({leads,onAdd,onEdit,onDelete,onDeleteMany,onAddTasks}){
 
     // Auto-tasks
     const newTasks=[];
-    // Follow-up task — recurring every 2 days, 5 reminders (covering 10 days)
+    // Follow-up task — single task at +2 days. Auto-renews when marked done (if lead still in follow status)
     if(lead.status==='follow'&&(!prev||prev.status!=='follow')){
-      for(let i=1;i<=5;i++){
-        newTasks.push({id:uid(),leadId:lead.id,kind:'follow',title:`פולו אפ — ${lead.name}`,cat:'פולו אפ',due:addDays(new Date(),i*2),notes:'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס',done:false});
-      }
+      newTasks.push({id:uid(),leadId:lead.id,kind:'follow',title:`פולו אפ — ${lead.name}`,cat:'פולו אפ',due:addDays(new Date(),2),notes:'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס',done:false});
     }
     // Event tasks (only when newly closed with a date, or date changed)
     if(lead.status==='closed'&&lead.eventDate&&(!prev||prev.status!=='closed'||prev.eventDate!==lead.eventDate)){
@@ -823,14 +835,15 @@ function EventsPage({leads,onEdit}){
   const years=[...[...new Set(closed.filter(l=>l.eventDate).map(l=>l.eventDate.slice(0,4)))].sort((a,b)=>b-a)];
   const cy=now.getFullYear().toString();
   const [fYear,setFYear]=useState(cy);
-  const filtered=fYear==='הכל'?closed:closed.filter(l=>l.eventDate?.startsWith(fYear));
+  const [fMonth,setFMonth]=useState('all');
+  let filtered=fYear==='הכל'?closed:closed.filter(l=>l.eventDate?.startsWith(fYear));
+  if(fMonth!=='all')filtered=filtered.filter(l=>l.eventDate?.slice(5,7)===fMonth);
   const msStart=new Date(now.getFullYear(),now.getMonth(),1);
   const msEnd=new Date(now.getFullYear(),now.getMonth()+1,0);
   const thisMonth=filtered.filter(l=>l.eventDate&&new Date(l.eventDate)>=msStart&&new Date(l.eventDate)<=msEnd).sort((a,b)=>new Date(a.eventDate)-new Date(b.eventDate));
   const upcoming=filtered.filter(l=>l.eventDate&&new Date(l.eventDate)>msEnd).sort((a,b)=>new Date(a.eventDate)-new Date(b.eventDate));
   const past=filtered.filter(l=>!l.eventDate||new Date(l.eventDate)<msStart).sort((a,b)=>new Date(b.eventDate||b.createdAt)-new Date(a.eventDate||a.createdAt));
   const totalRev=filtered.reduce((s,l)=>s+(l.amount||0),0);
-  const totalBalance=filtered.reduce((s,l)=>{const t=l.amount||0;return s+(l.advanceDone?(t-(l.advance||0)):t)},0);
 
   const ECard=({l,dim})=>{
     const d=l.eventDate?new Date(l.eventDate):null;
@@ -862,16 +875,19 @@ function EventsPage({leads,onEdit}){
       <ReminderBanner leads={leads}/>
       <div className="ph">
         <div><div className="pt">אירועים</div><div className="ps">{closed.length} אירועים סגורים</div></div>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
           <select className="fi" style={{width:120}} value={fYear} onChange={e=>setFYear(e.target.value)}>
             <option value="הכל">כל הזמנים</option>{years.map(y=><option key={y}>{y}</option>)}
           </select>
+          <select className="fi" style={{width:130}} value={fMonth} onChange={e=>setFMonth(e.target.value)}>
+            <option value="all">כל החודשים</option>
+            {MONTHS.map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
+          </select>
         </div>
       </div>
-      <div className="kgrid" style={{gridTemplateColumns:'repeat(4,1fr)',marginBottom:18}}>
+      <div className="kgrid" style={{gridTemplateColumns:'repeat(3,1fr)',marginBottom:18}}>
         <div className="kcard"><div className="klabel">אירועים</div><div className="kval">{filtered.length}</div></div>
         <div className="kcard"><div className="klabel">הכנסות</div><div className="kval" style={{color:'var(--green)'}}>₪{totalRev.toLocaleString()}</div><div className="ksub">ממוצע ₪{filtered.length?Math.round(totalRev/filtered.length).toLocaleString():0}</div></div>
-        <div className="kcard"><div className="klabel">יתרות פתוחות</div><div className="kval" style={{color:'var(--red)'}}>₪{totalBalance.toLocaleString()}</div><div className="ksub">לגביה</div></div>
         <div className="kcard"><div className="klabel">החודש</div><div className="kval">{thisMonth.length}</div><div className="ksub">{MONTHS[now.getMonth()]}</div></div>
       </div>
 
@@ -924,9 +940,9 @@ function Analytics({leads}){
       </div>
       <div className="kgrid" style={{marginBottom:18}}>
         <div className="kcard"><div className="klabel">לידים</div><div className="kval">{yl.length}</div></div>
-        <div className="kcard"><div className="klabel">ענו לטלפון</div><div className="kval">{answered.length}</div><div className="ksub">{yl.length?Math.round(answered.length/yl.length*100):0}%</div></div>
+        <div className="kcard"><div className="klabel">הכנסות</div><div className="kval" style={{color:'var(--accent)'}}>₪{closed.reduce((s,l)=>s+(l.amount||0),0).toLocaleString()}</div><div className="ksub">ממוצע ₪{closed.length?Math.round(closed.reduce((s,l)=>s+(l.amount||0),0)/closed.length).toLocaleString():0}</div></div>
         <div className="kcard"><div className="klabel">נסגרו</div><div className="kval" style={{color:'var(--green)'}}>{closed.length}</div><div className="ksub">{yl.length?Math.round(closed.length/yl.length*100):0}% המרה</div></div>
-        <div className="kcard"><div className="klabel">הכנסות</div><div className="kval" style={{color:'var(--accent)'}}>₪{closed.reduce((s,l)=>s+(l.amount||0),0).toLocaleString()}</div></div>
+        <div className="kcard"><div className="klabel">לא נסגרו</div><div className="kval" style={{color:'var(--red)'}}>{yl.filter(l=>l.status==='lost').length}</div><div className="ksub">{yl.length?Math.round(yl.filter(l=>l.status==='lost').length/yl.length*100):0}% מהלידים</div></div>
       </div>
       <div className="tabs">{['מקורות','סוגי אירועים','סיבות אי-סגירה','פאנל המרה'].map(t=><div key={t} className={`tab ${tab===t?'active':''}`} onClick={()=>setTab(t)}>{t}</div>)}</div>
 
@@ -1014,7 +1030,7 @@ function Analytics({leads}){
 }
 
 // ── TASKS PAGE ───────────────────────────────────────────────────
-function Tasks({tasks,setTasks,extraTasks,onClearExtra}){
+function Tasks({tasks,setTasks,leads,extraTasks,onClearExtra}){
   const [showForm,setShowForm]=useState(false);
   const [filter,setFilter]=useState('active');
   const [form,setForm]=useState({title:'',cat:'פולו אפ',due:'',notes:'',done:false});
@@ -1028,13 +1044,33 @@ function Tasks({tasks,setTasks,extraTasks,onClearExtra}){
 
   const sf=(k,v)=>setForm(p=>({...p,[k]:v}));
   const addTask=()=>{if(!form.title.trim())return;setTasks(p=>[{...form,id:uid()},...p]);setForm({title:'',cat:'פולו אפ',due:'',notes:'',done:false});setShowForm(false)};
-  const toggle=id=>setTasks(p=>p.map(t=>t.id===id?{...t,done:!t.done}:t));
+  const toggle=id=>setTasks(p=>{
+    const target=p.find(t=>t.id===id);
+    const updated=p.map(t=>t.id===id?{...t,done:!t.done}:t);
+    // Auto-renew follow-up: when marking a follow task as done, if lead is still 'follow' and no other open follow task for that lead exists, create the next one in +2 days
+    if(target&&!target.done&&target.kind==='follow'&&target.leadId){
+      const lead=leads?.find(l=>l.id===target.leadId);
+      if(lead&&lead.status==='follow'){
+        const hasOpen=updated.some(t=>t.id!==id&&t.kind==='follow'&&t.leadId===target.leadId&&!t.done);
+        if(!hasOpen){
+          updated.unshift({id:uid(),leadId:lead.id,kind:'follow',title:`פולו אפ — ${lead.name}`,cat:'פולו אפ',due:addDays(new Date(),2),notes:'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס',done:false});
+        }
+      }
+    }
+    return updated;
+  });
   const del=id=>setTasks(p=>p.filter(t=>t.id!==id));
 
   const now=new Date();
   const active=tasks.filter(t=>!t.done);
   const overdue=tasks.filter(t=>!t.done&&t.due&&new Date(t.due)<now);
-  const filtered=tasks.filter(t=>filter==='all'||(filter==='active'&&!t.done)||(filter==='done'&&t.done)||(filter===t.cat));
+  const filtered=tasks.filter(t=>{
+    if(filter==='all')return true;
+    if(filter==='active')return !t.done;
+    if(filter==='done')return t.done;
+    // category filter: only active (done tasks appear only under "הושלמו")
+    return !t.done&&t.cat===filter;
+  });
 
   return(
     <div>
@@ -1283,7 +1319,7 @@ function App(){
         />}
         {page==='events'&&<EventsPage leads={leads} onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}/>}
         {page==='analytics'&&<Analytics leads={leads}/>}
-        {page==='tasks'&&<Tasks tasks={tasks} setTasks={setTasks} extraTasks={pendingTasks} onClearExtra={()=>setPendingTasks([])}/>}
+        {page==='tasks'&&<Tasks tasks={tasks} setTasks={setTasks} leads={leads} extraTasks={pendingTasks} onClearExtra={()=>setPendingTasks([])}/>}
       </main>
       {showTweaks&&<div className="tweaks-panel">
         <div style={{fontWeight:700,marginBottom:12,fontSize:13}}>Tweaks</div>

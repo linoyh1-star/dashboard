@@ -198,6 +198,7 @@ const SRC_HEX={'פייסבוק אורגני':'#3b5998','אינסטגרם אור�
 const SRC_CSS={'פייסבוק אורגני':'oklch(50% .19 240)','אינסטגרם אורגני':'oklch(52% .2 330)','מפה לאוזן':'oklch(50% .15 145)','קמפיין מטא':'oklch(50% .19 22)','אתר שלי':'oklch(50% .17 200)','אחר':'oklch(55% .04 0)'};
 const TYPE_CSS={'רווקות':'oklch(52% .2 330)','יומולדת':'oklch(60% .17 80)','הרמת כוסית':'oklch(50% .15 145)','קבוצה מאורגנת':'oklch(50% .17 200)','מקווה':'oklch(50% .19 240)','אירוע חברה':'oklch(50% .19 22)','יום גיבוש':'oklch(55% .14 160)','הפרשת חלה':'oklch(55% .15 60)','אחר':'oklch(55% .04 0)'};
 const TASK_CATS=['פולו אפ','אירוע קרוב','הצעת מחיר','שיווק','כללי'];
+const LOST_REASONS=['חוסר מענה','מחיר','תאריכים חופפים','חוסר רלוונטיות','אני לא יכולתי','חוסר רצינות','מצב ביטחוני'];
 const CAT_CSS={'פולו אפ':'var(--blue)','אירוע קרוב':'var(--green)','הצעת מחיר':'var(--accent)','שיווק':'oklch(52% .2 330)','כללי':'var(--text2)'};
 const REVENUE_2025=[0,0,0,0,0,0,0,0,0,0,0,0];
 const INSIGHT_MAP={
@@ -340,7 +341,19 @@ function LeadFormModal({lead,onSave,onClose}){
               <div className="fg"><label className="fl">ענה/לא ענה</label><input className="fi" value={f.answered} onChange={e=>s('answered',e.target.value)} placeholder="ענתה / לא ענתה"/></div>
               <div className="fg"><label className="fl">תאריך פניה</label><input type="date" className="fi" value={f.createdAt} onChange={e=>s('createdAt',e.target.value)}/></div>
             </div>
-            {f.status==='lost'&&<div className="fg"><label className="fl">סיבת אי-סגירה</label><input className="fi" value={f.lostReason} onChange={e=>s('lostReason',e.target.value)}/></div>}
+            {f.status==='lost'&&<div className="fg" style={{background:'var(--redbg)',border:'1px solid oklch(91% .05 20)',borderRadius:8,padding:'12px 14px',marginTop:4}}>
+              <label className="fl" style={{color:'var(--red)',fontWeight:700}}>למה לא נסגר? *</label>
+              <select className="fi" value={LOST_REASONS.includes(f.lostReason)?f.lostReason:(f.lostReason?'__other__':'')} onChange={e=>{
+                const v=e.target.value;
+                s('lostReason',v==='__other__'?' ':(v==='__none__'?'':v));
+              }}>
+                <option value="__none__">בחרי סיבה...</option>
+                {LOST_REASONS.map(r=><option key={r} value={r}>{r}</option>)}
+                <option value="__other__">אחר</option>
+              </select>
+              {f.lostReason&&!LOST_REASONS.includes(f.lostReason)&&<input className="fi" style={{marginTop:8}} value={f.lostReason.trim()} onChange={e=>s('lostReason',e.target.value)} placeholder="כתבי סיבה..." autoFocus/>}
+              <div style={{fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.5}}>הסיבה תופיע בניתוח המרות עם תובנות מותאמות לשיפור</div>
+            </div>}
 
             {/* Basic event fields shown for all statuses */}
             {f.status!=='closed'&&<>

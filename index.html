@@ -198,15 +198,18 @@ const SRC_HEX={'פייסבוק אורגני':'#3b5998','אינסטגרם אור�
 const SRC_CSS={'פייסבוק אורגני':'oklch(50% .19 240)','אינסטגרם אורגני':'oklch(52% .2 330)','מפה לאוזן':'oklch(50% .15 145)','קמפיין מטא':'oklch(50% .19 22)','אתר שלי':'oklch(50% .17 200)','אחר':'oklch(55% .04 0)'};
 const TYPE_CSS={'רווקות':'oklch(52% .2 330)','יומולדת':'oklch(60% .17 80)','הרמת כוסית':'oklch(50% .15 145)','קבוצה מאורגנת':'oklch(50% .17 200)','מקווה':'oklch(50% .19 240)','אירוע חברה':'oklch(50% .19 22)','יום גיבוש':'oklch(55% .14 160)','הפרשת חלה':'oklch(55% .15 60)','אחר':'oklch(55% .04 0)'};
 const TASK_CATS=['פולו אפ','אירוע קרוב','הצעת מחיר','שיווק','כללי'];
-const LOST_REASONS=['חוסר מענה','מחיר','תאריכים חופפים','חוסר רלוונטיות','אני לא יכולתי','חוסר רצינות','מצב ביטחוני'];
+const LOST_REASONS=['חוסר מענה','הקונספט לא התאים','תאריכים חופפים','מחיר','אני לא רציתי','אני לא יכולתי'];
 const CAT_CSS={'פולו אפ':'var(--blue)','אירוע קרוב':'var(--green)','הצעת מחיר':'var(--accent)','שיווק':'oklch(52% .2 330)','כללי':'var(--text2)'};
 const REVENUE_2025=[0,0,0,0,0,0,0,0,0,0,0,0];
 const INSIGHT_MAP={
   'חוסר מענה':{title:'חוסר מענה — הזדמנות לשיפור',action:'שלחי הודעת WhatsApp תוך שעה מרגע הפנייה. הוסיפי פולו אפ ידני לאחר 48 שעות. לידים ממטא דורשים מענה תוך שעה — כל שעת עיכוב מורידה את סיכויי הסגירה.',color:'oklch(50% .17 240)'},
+  'הקונספט לא התאים':{title:'הקונספט לא התאים — מיקוד מסר השיווק',action:'אם לקוחות מרגישים שהקונספט לא מתאים — אולי השיווק מושך קהל לא מדויק. בדקי את הסטוריז והפוסטים — האם הם משדרים את הסגנון הנכון? הציגי יותר אירועים מהסוג שאת רוצה למשוך.',color:'oklch(52% .2 330)'},
+  'תאריכים חופפים':{title:'תאריכים חופפים — ניהול יומן',action:'צרי רשימת המתנה. שקלי לרשום לידים נוספים לאותו תאריך מתוך ידיעה שיתכנו ביטולים. המלצי על קולגות לימים תפוסים — יוצר מוניטין.',color:'oklch(50% .17 200)'},
   'מחיר':{title:'מחיר — גמישות וחבילות',action:'הציגי 2-3 חבילות מדורגות. ודאי שהצעת המחיר כוללת פירוט ערך ברור. לעיתים הבעיה אינה המחיר אלא ההצדקה — הראי עבודות קודמות בשיחה.',color:'oklch(50% .19 22)'},
-  'תאריכים חופפים':{title:'תאריכים חופפים — ניהול יומן',action:'צרי רשימת המתנה. שקלי לרשום לידים נוספים לאותו תאריך מתוך ידיעה שיתכנו ביטולים. המלצי על קולגות לימים תפוסים — יוצר מוניטין.',color:'oklch(52% .2 330)'},
-  'חוסר רלוונטיות':{title:'לידים לא רלוונטיים — מיקוד קמפיין',action:'בדקי הגדרות קמפיין — גיל, תחומי עניין, מיקום. לידים לא רלוונטיים מבזבזים תקציב. שקלי הוספת שאלון קצר בלינק ביו לסינון מוקדם.',color:'oklch(50% .15 145)'},
+  'אני לא רציתי':{title:'בחרת שלא לקחת — שמרי על איכות',action:'אם בחרת שלא לקחת את האירוע, זה לרוב מסיבה טובה: לא הרגשת כימיה, או שזה לא אירוע שמתאים לך. עקבי אחרי הדפוס — אולי יש סוג מסוים של אירועים שכדאי לסנן מראש דרך השאלון.',color:'oklch(60% .17 80)'},
   'אני לא יכולתי':{title:'אי-זמינות — ניהול לוח זמנים',action:'סמני ימים חסומים ביומן מראש. שקלי להציג תאריכים פנויים בסטוריז פרואקטיבית — לקוחות שיודעים מתי את פנויה ייצרו קשר בזמן.',color:'oklch(55% .14 160)'},
+  // Legacy reasons (kept for backward compatibility)
+  'חוסר רלוונטיות':{title:'לידים לא רלוונטיים — מיקוד קמפיין',action:'בדקי הגדרות קמפיין — גיל, תחומי עניין, מיקום. לידים לא רלוונטיים מבזבזים תקציב. שקלי הוספת שאלון קצר בלינק ביו לסינון מוקדם.',color:'oklch(50% .15 145)'},
   'חוסר רצינות':{title:'לידים לא רציניים — סינון מוקדם',action:'הוסיפי שאלון קצר לפני שיחה (תאריך, מספר אנשים, תקציב). זה מסנן לידים לא רציניים וחוסך זמן יקר.',color:'oklch(60% .17 80)'},
   'מצב ביטחוני':{title:'מצב ביטחוני — גורם חיצוני',action:'גורם שאינו בשליטתך. שמרי קשר עם לידים אלו — חלקם יחזרו. שלחי עדכון חיובי כשהתנאים מאפשרים.',color:'oklch(55% .04 0)'},
 };
@@ -320,6 +323,8 @@ function LeadFormModal({lead,onSave,onClose}){
     createdAt:new Date().toISOString().split('T')[0],brideName:'',guideName:''};
   const [f,setF]=useState(lead||blank);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  // Track "other reason" mode separately so spaces in custom text are preserved
+  const [otherMode,setOtherMode]=useState(()=>!!(lead?.lostReason&&!LOST_REASONS.includes(lead.lostReason)));
   const balance=f.advanceDone?(f.amount-(f.advance||0)):f.amount;
   return(
     <div className="modal-ov" onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -343,15 +348,16 @@ function LeadFormModal({lead,onSave,onClose}){
             </div>
             {f.status==='lost'&&<div className="fg" style={{background:'var(--redbg)',border:'1px solid oklch(91% .05 20)',borderRadius:8,padding:'12px 14px',marginTop:4}}>
               <label className="fl" style={{color:'var(--red)',fontWeight:700}}>למה לא נסגר? *</label>
-              <select className="fi" value={LOST_REASONS.includes(f.lostReason)?f.lostReason:(f.lostReason?'__other__':'')} onChange={e=>{
+              <select className="fi" value={otherMode?'__other__':(LOST_REASONS.includes(f.lostReason)?f.lostReason:'__none__')} onChange={e=>{
                 const v=e.target.value;
-                s('lostReason',v==='__other__'?' ':(v==='__none__'?'':v));
+                if(v==='__other__'){setOtherMode(true);s('lostReason','')}
+                else{setOtherMode(false);s('lostReason',v==='__none__'?'':v)}
               }}>
                 <option value="__none__">בחרי סיבה...</option>
                 {LOST_REASONS.map(r=><option key={r} value={r}>{r}</option>)}
                 <option value="__other__">אחר</option>
               </select>
-              {f.lostReason&&!LOST_REASONS.includes(f.lostReason)&&<input className="fi" style={{marginTop:8}} value={f.lostReason.trim()} onChange={e=>s('lostReason',e.target.value)} placeholder="כתבי סיבה..." autoFocus/>}
+              {otherMode&&<input className="fi" style={{marginTop:8}} value={f.lostReason} onChange={e=>s('lostReason',e.target.value)} placeholder="כתבי סיבה..." autoFocus/>}
               <div style={{fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.5}}>הסיבה תופיע בניתוח המרות עם תובנות מותאמות לשיפור</div>
             </div>}
 

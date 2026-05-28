@@ -375,10 +375,10 @@ function LeadFormModal({lead,onSave,onClose}){
             {f.status==='closed'&&<>
               <div className="sec" style={{marginTop:6}}>פרטי האירוע</div>
               <div className="fg2">
-                <div className="fg"><label className="fl">שם המלווה</label><input className="fi" value={f.guideName||''} onChange={e=>s('guideName',e.target.value)} placeholder="שמך"/></div>
-                <div className="fg"><label className="fl">שם הכלה / מוזמן ראשי</label><input className="fi" value={f.brideName||''} onChange={e=>s('brideName',e.target.value)}/></div>
+                <div className="fg"><label className="fl">שם איש הקשר</label><input className="fi" value={f.guideName||''} onChange={e=>s('guideName',e.target.value)} placeholder="שם איש הקשר"/></div>
+                <div className="fg"><label className="fl">שם בעל האירוע</label><input className="fi" value={f.brideName||''} onChange={e=>s('brideName',e.target.value)} placeholder="שם בעל האירוע"/></div>
                 <div className="fg"><label className="fl">תאריך האירוע</label><input type="date" className="fi" value={f.eventDate} onChange={e=>s('eventDate',e.target.value)}/></div>
-                <div className="fg"><label className="fl">מיקום</label><input className="fi" value={f.location} onChange={e=>s('location',e.target.value)} placeholder="אולם, גן, כתובת..."/></div>
+                <div className="fg"><label className="fl">מקום בארץ</label><input className="fi" value={f.location} onChange={e=>s('location',e.target.value)} placeholder="עיר / אזור..."/></div>
               </div>
               <div className="sec" style={{marginTop:2}}>תשלומים</div>
               <div className="fg3">
@@ -417,7 +417,7 @@ function EventDetailModal({lead,onEdit,onClose}){
       <div className="modal" style={{maxWidth:500}}>
         <div className="mh"><span className="mt">{lead.name}</span><button className="xbtn" onClick={onClose}>×</button></div>
         <div className="mb">
-          {[['כלה / מוזמן',lead.brideName||lead.name],['מלווה',lead.guideName||'—'],['סוג אירוע',lead.eventType],['תאריך',d?fmtFull(lead.eventDate):'—'],['מיקום',lead.location||'—'],['מקור',lead.source]].map(([k,v])=>(
+          {[['בעל האירוע',lead.brideName||lead.name],['איש הקשר',lead.guideName||'—'],['סוג אירוע',lead.eventType],['תאריך',d?fmtFull(lead.eventDate):'—'],['מקום בארץ',lead.location||'—'],['מקור',lead.source]].map(([k,v])=>(
             <div key={k} style={{display:'flex',gap:10,padding:'9px 0',borderBottom:'1px solid var(--border)',alignItems:'baseline'}}>
               <span style={{fontWeight:600,fontSize:13,color:'var(--text2)',minWidth:110}}>{k}</span>
               <span style={{fontSize:13}}>{v}</span>

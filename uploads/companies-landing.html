@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>לינוי ניסים ונפלאות, מופע קומי אינטראקטיבי לחברות</title>
+<meta name="description" content="מופע קומי אינטראקטיבי ושובר שגרה של לינוי ניסים, סטנדאפ מאולתר, משחקים חברתיים ופרסים. חוויה משותפת ליום גיבוש." />
+
+<!--
+════════════════════════════════════════════════════════════════════════
+  🎤 דף מכירה: לינוי ניסים ונפלאות | מופע קומי לחברות
+════════════════════════════════════════════════════════════════════════
+
+  ✏️  איך עורכים טקסט:
+     כל סקשן מסומן בכותרת גדולה בסגנון ══════════════ NAV ══════════════
+     חפשי בקוד "✏️" כדי לקפוץ בין כל הטקסטים לעריכה.
+     לא לגעת בתגיות <div>, <span>, <p> — רק בטקסט שבתוכן.
+
+  📁  מפה מהירה של הסקשנים בקובץ:
+     1. NAV                — סרגל עליון
+     2. HERO / פתיח        — כותרת ראשית + תמונה
+     3. ABOUT THE SHOW      — טקסט "על המופע" + 3 בונוסים
+     4. CHARACTERS          — סרטון + 3 דמויות (לטיפה, אודל, יפית)
+     5. ABOUT ME / נעים מאוד — ביו + תמונה
+     6. HOW IT LOOKS        — 5 ריבועים
+     7. FAQ                 — שאלות ותשובות
+     8. SOCIAL              — קישורים לרשתות
+
+  🖼️  להחלפת תמונות:
+     hero  → uploads/תמונה 1.png
+     bio   → uploads/תמונה 2.jpeg
+     (החליפי את הקבצים באותו שם, או עדכני את ה-src בקוד)
+
+════════════════════════════════════════════════════════════════════════
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Heebo:wght@500;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+  /* ───── Brand tokens (מסונכרן עם VibeIT) ───── */
+  :root {
+    --orange: #E8512A;
+    --orange-deep: #C73E1C;
+    --orange-soft: #FBE4DB;
+    --orange-tint: #FDF6F2;
+
+    --pink: #EAA0BA;
+    --pink-deep: #C75E82;
+    --pink-soft: #F9E8EE;
+    --pink-tint: #FCF5F7;
+
+    --ink: #0F0E0D;
+    --ink-2: #2A2622;
+    --ink-3: #6B6764;
+    --ink-4: #A7A39F;
+    --line: #ECE9E5;
+    --line-2: #F4F1ED;
+
+    --bg: #FFFFFF;
+    --bg-alt: #FBFAF8;
+    --bg-dark: #0F0E0D;
+
+    --shadow-sm: 0 1px 2px rgba(15,14,13,0.04), 0 4px 14px -8px rgba(15,14,13,0.08);
+    --shadow-md: 0 12px 32px -14px rgba(15,14,13,0.18);
+    --shadow-lg: 0 32px 70px -28px rgba(15,14,13,0.35);
+    --shadow-orange: 0 14px 34px -14px rgba(232,81,42,0.5);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    font-family: "Assistant", system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.05px;
+  }
+  body { overflow-x: hidden; }
+  img { max-width: 100%; display: block; }
+  a { color: inherit; text-decoration: none; }
+
+  h1, h2, h3, .display {
+    font-family: "Heebo", "Assistant", system-ui, sans-serif;
+    font-weight: 800;
+    letter-spacing: -1.2px;
+    line-height: 1.05;
+  }
+
+  .container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+  .narrow    { max-width: 860px;  margin: 0 auto; padding: 0 24px; }
+
+  .eyebrow {
+    display: inline-block;
+    font-family: "Heebo", sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.6px;
+    color: var(--orange);
+    margin-bottom: 18px;
+    text-transform: uppercase;
+  }
+  .eyebrow .dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--orange); margin-left: 8px;
+    vertical-align: middle; transform: translateY(-2px);
+  }
+
+  .h1 { font-size: clamp(42px, 7vw, 82px); margin: 0 0 24px; }
+  .h1-sub {
+    font-size: clamp(20px, 2.4vw, 28px);
+    font-family: "Heebo", sans-serif;
+    font-weight: 500;
+    letter-spacing: -0.4px;
+    color: var(--ink-3);
+    line-height: 1.35;
+    margin: 0;
+    max-width: 640px;
+  }
+  .h2 { font-size: clamp(30px, 4.4vw, 52px); margin: 0 0 18px; }
+  .h3 { font-size: 22px; font-weight: 800; margin: 0 0 8px; }
+  .lead {
+    font-size: clamp(17px, 1.6vw, 20px);
+    line-height: 1.65;
+    color: var(--ink-3);
+    margin: 0 0 24px;
+    max-width: 620px;
+  }
+  .center { text-align: center; }
+  .center .lead { margin-left: auto; margin-right: auto; }
+
+  /* ───── כותרת בזווית (אחת בלבד) ───── */
+  .tilt {
+    display: inline-block;
+    transform: rotate(-2.4deg);
+    background: var(--orange);
+    color: #fff;
+    padding: 4px 20px 8px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-orange);
+  }
+  .underline-scribble {
+    background-image: linear-gradient(120deg, var(--orange) 0%, var(--pink-deep) 100%);
+    background-repeat: no-repeat;
+    background-size: 100% 10px;
+    background-position: 0 92%;
+    padding: 0 4px;
+  }
+
+  /* ───── Nav ───── */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+  }
+  .nav.scrolled { border-bottom-color: var(--line); }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; max-width: 1160px; margin: 0 auto; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+  .logo-mark {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: var(--ink); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Heebo", sans-serif; font-weight: 800; font-size: 15px;
+  }
+  .logo-name { font-family: "Heebo", sans-serif; font-size: 15.5px; }
+  .logo-name b { color: var(--orange); font-weight: 800; }
+  .nav-tag {
+    font-size: 12px; font-weight: 600; color: var(--ink-3);
+    font-family: "Heebo", sans-serif;
+    padding: 8px 14px; border-radius: 999px;
+    border: 1px solid var(--line);
+  }
+
+  /* ───── Section ───── */
+  section { padding: 50px 0; position: relative; }
+  section.tight { padding: 40px 0; }
+  section.dark { background: var(--bg-dark); color: #fff; }
+  section.dark .lead { color: #c9c5c1; }
+  section.dark h2 { color: #fff; }
+  section.soft { background: var(--bg-alt); }
+
+  /* ───── HERO ───── */
+  .hero {
+    position: relative;
+    padding: 50px 0 60px;
+    background: linear-gradient(180deg, var(--orange-tint) 0%, #fff 100%);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute; top: -140px; left: -160px;
+    width: 520px; height: 520px; border-radius: 50%;
+    background: radial-gradient(circle, var(--pink-soft) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: "";
+    position: absolute; bottom: -180px; right: -160px;
+    width: 560px; height: 560px; border-radius: 50%;
+    background: radial-gradient(circle, var(--orange-soft) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-inner {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 60px;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+  .hero h1 .accent { color: var(--orange); }
+
+  /* Hero visual — מיכל ריבועי שחותך את 25% העליונים ואת 25% התחתונים של תמונה 1 */
+  .hero-visual {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 24px;
+    background: var(--pink-soft);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+  .hero-visual img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    display: block;
+  }
+
+  /* ───── ABOUT THE SHOW ───── */
+  .show-copy {
+    font-size: 18px;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+  .show-copy p { margin: 0 0 4px; }
+  .show-copy .highlight {
+    font-family: "Heebo", sans-serif;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* Bonus list */
+  .bonuses {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 28px 30px;
+    margin-top: 24px;
+    box-shadow: var(--shadow-sm);
+  }
+  .bonuses-title {
+    font-family: "Heebo", sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    margin-bottom: 20px;
+    letter-spacing: -0.4px;
+  }
+  .bonuses-title .accent { color: var(--orange); }
+  .bonuses ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }
+  .bonuses li {
+    display: flex; gap: 14px; align-items: flex-start;
+    font-size: 17px; line-height: 1.55; color: var(--ink-2);
+  }
+  .bonuses li .mark {
+    flex-shrink: 0;
+    width: 26px; height: 26px; border-radius: 8px;
+    background: var(--orange-soft); color: var(--orange-deep);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: "Heebo", sans-serif; font-weight: 800; font-size: 14px;
+    margin-top: 1px;
+  }
+  .bonuses li:nth-child(2) .mark { background: var(--pink-soft); color: var(--pink-deep); }
+  .bonuses li:nth-child(3) .mark { background: var(--ink); color: #fff; }
+
+  /* Arrow to video */
+  .arrow-down {
+    text-align: center;
+    margin-top: 20px;
+    color: var(--ink-3);
+    font-family: "Heebo", sans-serif;
+    font-weight: 700;
+    font-size: 14.5px;
+    letter-spacing: 0.4px;
+  }
+  .arrow-down .caret {
+    display: block;
+    margin: 10px auto 0;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--orange);
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: var(--shadow-orange);
+    animation: bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+  }
+
+  /* ───── CHARACTERS ───── */
+  .video-frame {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: linear-gradient(135deg, var(--ink-2) 0%, var(--ink) 100%);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.55);
+    font-family: "Heebo", sans-serif;
+    margin-bottom: 24px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .video-frame::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(232,81,42,0.18) 0%, transparent 50%),
+      radial-gradient(circle at 70% 60%, rgba(234,160,186,0.15) 0%, transparent 50%);
+  }
+  .video-play {
+    position: relative; z-index: 1;
+    width: 74px; height: 74px; border-radius: 50%;
+    background: var(--orange);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 20px 44px -14px rgba(232,81,42,0.7);
+    color: #fff; font-size: 24px;
+    margin-bottom: 16px;
+  }
+  .video-caption { position: relative; z-index: 1; text-align: center; font-size: 13.5px; }
+
+  /* Character bars (accordion) */
+  .char-bars {
+    display: flex; flex-direction: column; gap: 14px;
+    margin-top: 8px;
+  }
+  .char-bar {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .char-bar.open { border-color: var(--orange); background: rgba(232,81,42,0.06); }
+  .char-bar-head {
+    width: 100%; background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; gap: 20px;
+    padding: 22px 26px;
+    text-align: right;
+    color: #fff;
+    font-family: "Heebo", sans-serif;
+  }
+  .char-num {
+    flex-shrink: 0;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--orange);
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 17px;
+    letter-spacing: -0.5px;
+  }
+  .char-bar:nth-child(2) .char-num { background: var(--pink-deep); }
+  .char-bar:nth-child(3) .char-num { background: #fff; color: var(--ink); }
+  .char-name {
+    font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
+    flex: 1;
+  }
+  .char-tagline {
+    color: rgba(255,255,255,0.6);
+    font-family: "Assistant", sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    margin-right: 6px;
+  }
+  .char-arrow {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .char-bar.open .char-arrow { transform: rotate(45deg); background: var(--orange); }
+  .char-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.3s ease;
+    color: rgba(255,255,255,0.75);
+    font-size: 16px; line-height: 1.7;
+  }
+  .char-bar.open .char-body { max-height: 400px; padding: 0 26px 26px 90px; }
+
+  /* ───── ABOUT ME ───── */
+  .about-inner {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 60px;
+    align-items: start;
+  }
+  .about-portrait {
+    aspect-ratio: 4 / 5;
+    border-radius: 22px;
+    background: var(--pink-soft);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    position: sticky;
+    top: 100px;
+  }
+  .about-portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    display: block;
+  }
+  .about-copy {
+    font-size: 18px;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+  .about-copy p { margin: 0 0 18px; }
+  .about-copy .highlight {
+    font-family: "Heebo", sans-serif;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* ───── HOW IT LOOKS (tiles) ───── */
+  .tiles-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+  }
+  .tile {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 34px 30px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .tile:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+  .tile-num {
+    font-family: "Heebo", sans-serif;
+    font-weight: 900;
+    font-size: 15px;
+    color: var(--orange);
+    letter-spacing: 0.8px;
+    margin-bottom: 14px;
+  }
+  .tile-title {
+    font-family: "Heebo", sans-serif;
+    font-weight: 800;
+    font-size: 24px;
+    letter-spacing: -0.6px;
+    margin-bottom: 12px;
+    line-height: 1.2;
+  }
+  .tile-title .accent { color: var(--orange); }
+  .tile-body {
+    color: var(--ink-3);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  .tile.wide {
+    grid-column: span 2;
+    background: linear-gradient(135deg, var(--orange-tint) 0%, var(--pink-tint) 100%);
+    border-color: var(--orange-soft);
+  }
+  .tile.wide .tile-num { color: var(--pink-deep); }
+
+  /* ───── FAQ ───── */
+  .faq-list { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .faq-item {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .faq-item.open { border-color: var(--orange); box-shadow: var(--shadow-sm); }
+  .faq-q {
+    width: 100%; background: none; border: none;
+    padding: 22px 26px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px;
+    font-family: "Heebo", sans-serif; font-size: 17px; font-weight: 700;
+    color: var(--ink); cursor: pointer; text-align: right;
+  }
+  .faq-q .arrow {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--orange-soft); color: var(--orange-deep);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 800;
+    flex-shrink: 0;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .faq-item.open .faq-q .arrow { transform: rotate(45deg); background: var(--orange); color: #fff; }
+  .faq-a {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.3s ease;
+    color: var(--ink-3); font-size: 15.5px; line-height: 1.7;
+  }
+  .faq-item.open .faq-a { max-height: 400px; padding: 0 26px 24px; }
+
+  /* ───── SOCIAL FOOTER ───── */
+  .social-strip {
+    background: var(--ink);
+    color: #fff;
+    border-radius: 28px;
+    padding: 54px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .social-strip::before {
+    content: "";
+    position: absolute; top: -80px; right: -80px;
+    width: 280px; height: 280px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,81,42,0.3) 0%, transparent 70%);
+  }
+  .social-strip::after {
+    content: "";
+    position: absolute; bottom: -100px; left: -100px;
+    width: 280px; height: 280px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(234,160,186,0.25) 0%, transparent 70%);
+  }
+  .social-strip > * { position: relative; z-index: 1; }
+  .social-strip h2 { color: #fff; margin-bottom: 12px; }
+  .social-strip p { color: #c9c5c1; font-size: 17px; margin-bottom: 32px; max-width: 520px; margin-left: auto; margin-right: auto; }
+
+  .socials {
+    display: flex; justify-content: center; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .social-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 13px 22px; border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #fff; font-weight: 700; font-size: 14.5px;
+    font-family: "Heebo", sans-serif;
+    transition: background 0.15s, transform 0.15s, border-color 0.15s;
+  }
+  .social-btn:hover { background: var(--orange); border-color: var(--orange); transform: translateY(-2px); }
+  .social-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+  /* ───── FOOTER ───── */
+  footer {
+    background: var(--bg-dark);
+    color: #6b6764;
+    padding: 30px 0;
+    text-align: center;
+    font-size: 13px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  footer b { color: var(--orange); font-weight: 700; }
+
+  /* ───── TODO placeholder ───── */
+  .todo {
+    display: inline-block;
+    background: repeating-linear-gradient(45deg, #fff5ad, #fff5ad 8px, #fce88a 8px, #fce88a 16px);
+    color: #7a5a00;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 700;
+    font-family: monospace;
+    border: 1px dashed #d4b52a;
+  }
+
+  /* ───── Responsive ───── */
+  @media (max-width: 900px) {
+    section { padding: 40px 0; }
+    .hero { padding: 40px 0 50px; }
+    .hero-inner { grid-template-columns: 1fr; gap: 40px; }
+    .hero-visual { max-width: 400px; margin: 0 auto; }
+    .about-inner { grid-template-columns: 1fr; gap: 32px; }
+    .about-portrait { max-width: 300px; margin: 0 auto; position: static; }
+    .tiles-grid { grid-template-columns: 1fr; }
+    .tile.wide { grid-column: span 1; }
+    .social-strip { padding: 40px 22px; }
+    .char-bar.open .char-body { padding: 0 26px 26px; }
+    .char-bar-head { flex-wrap: wrap; padding: 20px 22px; gap: 14px; }
+    .char-tagline { display: block; width: 100%; margin-right: 0; margin-top: -4px; }
+    .h1 { font-size: clamp(36px, 9vw, 56px); }
+    .h2 { font-size: clamp(28px, 6vw, 40px); }
+    .bonuses { padding: 26px 22px; }
+  }
+
+  /* ───── תוכן שמוצג רק ב-PDF (מוסתר במסך) ───── */
+  .video-print-link { display: none; }
+
+  /* ───── הדפסה / PDF ───── */
+  @media print {
+    @page { size: A4; margin: 10mm 8mm; }
+
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    html, body { font-size: 13px !important; }
+    .nav { display: none !important; }
+
+    /* padding מאוד קטן בסקשנים */
+    section { padding: 14px 0 !important; }
+    .hero { padding: 12px 0 18px !important; }
+    section.tight { padding: 12px 0 !important; }
+
+    /* מבטלים את הרספונסיב — hero + about נשארים צד־לצד גם ב-PDF */
+    .hero-inner {
+      grid-template-columns: 1.2fr 1fr !important;
+      gap: 22px !important;
+      align-items: center !important;
+    }
+    .hero-visual {
+      max-width: none !important;
+      margin: 0 !important;
+      border-radius: 14px !important;
+      box-shadow: 0 6px 20px -10px rgba(0,0,0,0.3) !important;
+    }
+    .about-inner {
+      grid-template-columns: 200px 1fr !important;
+      gap: 24px !important;
+    }
+    .about-portrait {
+      max-width: none !important; margin: 0 !important; position: static !important;
+      border-radius: 14px !important;
+      box-shadow: 0 6px 20px -10px rgba(0,0,0,0.3) !important;
+    }
+
+    /* כותרות קטנות יותר */
+    .h1 { font-size: 42px !important; margin: 0 0 8px !important; line-height: 1.02 !important; }
+    .h1-sub { font-size: 16px !important; line-height: 1.3 !important; }
+    .h2 { font-size: 24px !important; margin: 0 0 6px !important; }
+    .eyebrow { font-size: 10.5px !important; margin-bottom: 6px !important; }
+    .lead { font-size: 13.5px !important; margin: 0 0 8px !important; }
+    .tilt { padding: 2px 14px 5px !important; box-shadow: 0 4px 12px -6px rgba(232,81,42,0.6) !important; }
+
+    /* גוף "על המופע" */
+    .show-copy { font-size: 13.5px !important; line-height: 1.5 !important; }
+    .show-copy p { margin: 0 0 2px !important; }
+
+    /* בונוסים תמציתיים */
+    .bonuses { padding: 12px 16px !important; margin-top: 10px !important; border-radius: 10px !important; }
+    .bonuses-title { font-size: 15px !important; margin-bottom: 6px !important; }
+    .bonuses li { font-size: 12.5px !important; }
+    .bonuses ul { gap: 5px !important; }
+    .bonuses li .mark { width: 20px !important; height: 20px !important; font-size: 11px !important; }
+
+    /* חץ קטן יותר */
+    .arrow-down { display: none !important; }
+
+    /* ─── סרטון = לינק נקי אחרי הכותרת (בלי מסגרת) ─── */
+    .video-frame { display: none !important; }
+    .video-print-link {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      margin: 0 auto 12px !important;
+      padding: 6px 16px !important;
+      background: var(--orange) !important;
+      color: #fff !important;
+      text-decoration: none !important;
+      font-family: "Heebo", sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 13px !important;
+      border-radius: 999px !important;
+      box-shadow: 0 4px 14px -6px rgba(232,81,42,0.7) !important;
+    }
+
+    /* דמויות מוצגות פתוחות ובקומפקטיות */
+    .char-bars { gap: 6px !important; }
+    .char-bar { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.15) !important; border-radius: 8px !important; }
+    .char-bar-head { padding: 8px 14px !important; gap: 10px !important; }
+    .char-num { width: 24px !important; height: 24px !important; font-size: 12px !important; }
+    .char-name { font-size: 15px !important; }
+    .char-tagline { font-size: 12px !important; }
+    .char-arrow { display: none !important; }
+    .char-bar .char-body {
+      max-height: none !important;
+      padding: 0 48px 10px 14px !important;
+      font-size: 12px !important;
+      line-height: 1.45 !important;
+    }
+    .char-bar .char-body p { margin: 0 !important; }
+
+    /* חמישה ריבועים קומפקטיים */
+    .tiles-grid { gap: 8px !important; margin-top: 10px !important; }
+    .tile { padding: 12px 14px !important; border-radius: 10px !important; }
+    .tile-num { font-size: 10px !important; margin-bottom: 2px !important; }
+    .tile-title { font-size: 14px !important; margin-bottom: 3px !important; }
+    .tile-body { font-size: 12px !important; line-height: 1.4 !important; }
+
+    /* עליי */
+    .about-copy { font-size: 12.5px !important; line-height: 1.55 !important; }
+    .about-copy p { margin: 0 !important; }
+
+    /* FAQ קומפקטי */
+    .faq-list { gap: 5px !important; margin-top: 8px !important; }
+    .faq-item { border-radius: 8px !important; border-color: var(--orange) !important; }
+    .faq-q { padding: 7px 12px !important; font-size: 12.5px !important; }
+    .faq-q .arrow {
+      width: 20px !important; height: 20px !important; font-size: 13px !important;
+      transform: rotate(45deg) !important;
+      background: var(--orange) !important; color: #fff !important;
+    }
+    .faq-item .faq-a {
+      max-height: none !important;
+      padding: 0 12px 8px !important;
+      font-size: 12px !important; line-height: 1.45 !important;
+    }
+
+    /* Social קומפקטי */
+    .social-strip { padding: 16px 22px !important; border-radius: 14px !important; }
+    .social-strip h2 { font-size: 18px !important; margin-bottom: 4px !important; }
+    .social-strip p { font-size: 12px !important; margin-bottom: 10px !important; }
+    .social-btn { padding: 6px 12px !important; font-size: 11.5px !important; }
+    .socials { gap: 6px !important; }
+    .social-btn svg { width: 13px !important; height: 13px !important; }
+
+    footer { display: none !important; }
+
+    /* מעברי עמוד: להימנע מחיתוך של אלמנטים באמצע */
+    .char-bar, .faq-item, .tile, .bonuses, .about-inner,
+    .social-strip, .hero-inner {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    /* שומרים את כל תוכן הדמויות ביחד (לא מפוצל בין עמודים) */
+    #characters .container { break-inside: avoid; page-break-inside: avoid; }
+    .char-bars { break-inside: avoid; page-break-inside: avoid; }
+
+    /* יעד: 3-4 עמודים.
+       רק #characters מקבל page-break כפוי כדי לשמור על כל 3 הדמויות ביחד.
+       שאר הסקשנים זורמים טבעית לפי הזמינות. */
+    #characters { page-break-before: always; break-before: page; }
+    #about, #how, #faq, #social { page-break-before: auto !important; break-before: auto !important; }
+
+    /* מבטלים אנימציות */
+    * { animation: none !important; }
+  }
+</style>
+</head>
+
+<body>
+
+<!-- ══════════════ NAV ══════════════ -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#" class="logo">
+      <div class="logo-mark">ל</div>
+      <div class="logo-name">לינוי ניסים <b>ונפלאות</b></div>
+    </a>
+    <span class="nav-tag">מופע קומי לחברות</span>
+  </div>
+</nav>
+
+<!-- ══════════════ HERO / פתיח ══════════════ -->
+<section class="hero">
+  <div class="container hero-inner">
+    <div>
+      <!-- ✏️ HERO — eyebrow קטן מעל הכותרת -->
+      <span class="eyebrow"><span class="dot"></span>המופע לחברות ולימי גיבוש</span>
+
+      <!-- ✏️ HERO TITLE (שתי שורות) -->
+      <h1 class="h1">
+        לינוי ניסים <br />
+        <span class="accent">ונפלאות</span>
+      </h1>
+
+      <!-- ✏️ HERO SUBTITLE -->
+      <p class="h1-sub">
+        מופע קומי אינטראקטיבי ושובר שגרה
+      </p>
+    </div>
+
+    <div class="hero-visual">
+      <img src="%D7%AA%D7%9E%D7%95%D7%A0%D7%94%201.png" alt="לינוי ניסים על הבמה" />
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ ABOUT THE SHOW ══════════════ -->
+<section id="show" class="soft">
+  <div class="narrow">
+    <div class="center" style="margin-bottom: 24px;">
+      <!-- ✏️ SHOW — eyebrow -->
+      <span class="eyebrow"><span class="dot"></span>על המופע</span>
+
+      <!-- ✏️ SHOW TITLE (המילים בתוך <span class="tilt"> מופיעות בכתום ובזווית) -->
+      <h2 class="h2">
+        מופע קומי ומשחקים <span class="tilt">קורעים מצחוק</span><br />
+        שיוציאו אתכם מהשגרה
+      </h2>
+    </div>
+
+    <!-- ✏️ SHOW BODY — כל <p> הוא פסקה נפרדת. אפשר להוסיף/למחוק פסקאות. -->
+    <div class="show-copy">
+      <p>הגיע הזמן לצאת מהשגרה, מהטלפונים ומהרשתות החברתיות ולהתחבר באמת.</p>
+
+      <p>לשם כך התכנסנו, לא?!</p>
+
+      <p>
+        בין אם אתם צוות שהתחדש בג'וניורים, או קבוצה מאורגנת שמחפשת הרמת כוסית בסטייל,
+        כולנו פשוט רוצים... <span class="highlight">לצחוק.</span>
+      </p>
+
+      <p>
+        הכירו את המופע שיטרוף את הקלפים.
+        סטנדאפ מאולתר שישבור את הקרח, יחד עם משחקים חברתיים ותחרותיים המבוססים על אלתור, חשיבה מהירה,
+        עבודה קבוצתית ושיתוף פעולה, שהולכים לשבור את הרוטינה ולגרום לכם להכיר בעצמכם צדדים שלא הכרתם.
+      </p>
+    </div>
+
+    <!-- ✏️ BONUSES — כותרת + 3 בולטים. הטקסט בין <strong> יוצג בשחור מודגש. -->
+    <div class="bonuses">
+      <div class="bonuses-title">בונוסים <span class="accent">שווים</span></div>
+      <ul>
+        <li>
+          <span class="mark">1</span>
+          <span><strong>פרסים שווים למנצחים (אנחנו ישראלים, חייב).</strong></span>
+        </li>
+        <li>
+          <span class="mark">2</span>
+          <span><strong>ניתן להוסיף הנחיה כוללת לאירוע</strong> <span style="color:var(--ink-3);">(הרמת כוסית, חלוקת תעודות, וכל אירוע ששווה ציון).</span></span>
+        </li>
+        <li>
+          <span class="mark">3</span>
+          <span><strong>בחירת דמות מצחיקה שתנחה את המופע כולו.</strong></span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ✏️ Arrow to video -->
+    <div class="arrow-down">
+      תכירו את הדמויות
+      <span class="caret">↓</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CHARACTERS ══════════════ -->
+<section id="characters" class="dark">
+  <div class="container">
+    <!-- ✏️ CHARACTERS — כותרת הסקשן -->
+    <div class="center" style="max-width: 720px; margin: 0 auto 24px;">
+      <span class="eyebrow"><span class="dot"></span>הדמויות של המופע</span>
+      <h2 class="h2">לטיפה, אודל, יפית.</h2>
+      <p class="lead">
+        שלוש דמויות שיכולות להנחות את המופע לבחירתכם.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────
+         ✏️ סרטון הדמויות
+         להטמעה: להחליף את כל התוכן שבתוך .video-frame ב-iframe.
+         דוגמה (יוטיוב):
+           <iframe src="https://www.youtube.com/embed/VIDEO_ID"
+                   style="width:100%;height:100%;border:0;"
+                   allowfullscreen></iframe>
+         ───────────────────────────────────────────────────────── -->
+    <div class="video-frame">
+      <video
+        class="video-embed"
+        controls
+        preload="metadata"
+        playsinline
+        style="width:100%; height:100%; object-fit:cover; position:absolute; inset:0; background:#000;">
+        <source src="%D7%A1%D7%A8%D7%98%D7%95%D7%9F%20%D7%93%D7%9E%D7%95%D7%99%D7%95%D7%AA.mp4" type="video/mp4" />
+      </video>
+    </div>
+
+    <!-- ✏️ לינק לסרטון — מוצג רק ב-PDF, ישר אחרי הכותרת -->
+    <div class="video-print-wrap" style="text-align:center;">
+      <a class="video-print-link" href="%D7%A1%D7%A8%D7%98%D7%95%D7%9F%20%D7%93%D7%9E%D7%95%D7%99%D7%95%D7%AA.mp4">
+        ▶ צפייה בסרטון של הדמויות
+      </a>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────
+         ✏️ תוכן הדמויות
+         לכל דמות יש 2 שדות טקסט לעריכה:
+           (1) tagline  = משפט קליט קצר שמופיע ליד השם
+           (2) body     = תיאור מלא (2-4 משפטים) שנפתח בלחיצה
+         שמות הדמויות (לטיפה / אודל / יפית) — לערוך ב-<span class="char-name">
+         ───────────────────────────────────────────────────────── -->
+    <div class="char-bars">
+
+      <!-- ══════ דמות 1 ══════ -->
+      <div class="char-bar" data-char>
+        <button class="char-bar-head" type="button">
+          <span class="char-num">1</span>
+          <span class="char-name">לטיפה</span>
+          <!-- ✏️ TAGLINE 1: -->
+          <span class="char-tagline">בדואית אקזוטית שאי אפשר שלא להתאהב בה </span>
+          <span class="char-arrow">+</span>
+        </button>
+        <div class="char-body">
+          <!-- ✏️ BODY 1: מי היא לטיפה, על מה היא מדברת, איזה קטע נותנת במופע, למה הקהל אוהב אותה -->
+          <p>חולמת להיות משפיענית ביום וסטנדאפיסטית בלילה. מצחיקה, אנרגטית, מצליחה להגיע לכל אחד ואחת בהומור המיוחד שלה. בקיצור לטיפה היא.. הכל רק לא הסטריאוטיפ</p>
+        </div>
+      </div>
+
+      <!-- ══════ דמות 2 ══════ -->
+      <div class="char-bar" data-char>
+        <button class="char-bar-head" type="button">
+          <span class="char-num">2</span>
+          <span class="char-name">אודל</span>
+          <!-- ✏️ TAGLINE 2: -->
+          <span class="char-tagline">החרדית המודרנית</span>
+          <span class="char-arrow">+</span>
+        </button>
+        <div class="char-body">
+          <!-- ✏️ BODY 2: מי היא אודל, על מה היא מדברת, איזה קטע נותנת במופע, למה הקהל אוהב אותה -->
+          <p>צניעות לפני הכל! אודל היא בחורה חרדית מבני ברק, ואפילו יש לה חברה משלה! חברה לביטוחי צניעות. היא חדה, חריפה ומצחיקה! החרדית שתרצו להתייעץ איתה בעת צרה.</p>
+        </div>
+      </div>
+
+      <!-- ══════ דמות 3 ══════ -->
+      <div class="char-bar" data-char>
+        <button class="char-bar-head" type="button">
+          <span class="char-num">3</span>
+          <span class="char-name">יפית</span>
+          <!-- ✏️ TAGLINE 3: -->
+          <span class="char-tagline">אם לא תעשו קאט זה לא ייגמר</span>
+          <span class="char-arrow">+</span>
+        </button>
+        <div class="char-body">
+          <!-- ✏️ BODY 3: מי היא יפית, על מה היא מדברת, איזה קטע נותנת במופע, למה הקהל אוהב אותה -->
+          <p>יפית היא חנונית של רשות הטבע והגנים, יכולה לדבר על הכל ועם כל אחד אבל אם לא תעשו קאט היא לא תפסיק לדבר. חובבת טבע, פרחים והיסטוריה. החנונית שתרצו שתהיה הבסטי שלכם..</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ ABOUT ME / נעים מאוד ══════════════ -->
+<section id="about">
+  <div class="container">
+    <div class="about-inner">
+
+      <div class="about-portrait">
+        <img src="%D7%AA%D7%9E%D7%95%D7%A0%D7%94%202.jpeg" alt="לינוי ניסים על הבמה עם מיקרופון" />
+      </div>
+
+      <div>
+        <!-- ✏️ ABOUT ME — eyebrow + כותרת + פסקאות. הטקסט בין <span class="highlight"> יוצג מודגש בשחור. -->
+        <span class="eyebrow"><span class="dot"></span>אחת על אחת</span>
+        <h2 class="h2">נעים מאוד!</h2>
+
+        <div class="about-copy">
+          <p>
+            אני <span class="highlight">לינוי ניסים ונפלאות</span>, שחקנית, קומיקאית וסטנדאפיסטית.
+            מגיל קטן הבנתי שהומור הוא הדרך הכי קצרה ויעילה לחבר בין אנשים.
+            לאחר לימודי משחק ושנים של הופעות על מגוון במות, הפכתי את הכישרון שלי לחבר בין אנשים לשליחות.
+            מסיבת רווקות, יום הולדת או ערב צוות הם לא רק סימון וי. זה פוטנציאל אמיתי להתחבר, להכיר, לחוות
+            וליצור זיכרונות. ואיך עושים את זה בצורה הכי מיטבית? בדיוק, הומור.
+            כקומיקאית וסטנדאפיסטית למדתי איך <span class="highlight">לקרוא את החדר</span>, להתאים את עצמי לאנרגיה,
+            ולהתחבר לאנשים בקלות מתוך הרגע.
+            אני מביאה איתי שנים של ניסיון על במות וגם מסלונים, מאירועים שונים ומשונים.
+            למדתי איך לרתום אנשים, איך להרים את האווירה,
+            איך לגרום לאנשים שלפני חמש דקות לא הכירו ואפילו התביישו קצת, לשתף פעולה.
+            ראיתי איך אנשים מגלים בעצמם צדדים שלא הכירו, איך הקהל מהופנט, מגויס.
+            ונחשו מה? <span class="highlight">אף אחד לא בטלפון.</span> אפילו לא כדי לצלם.
+            הם כאן, נוכחים ברגע, מתפוצצים מצחוק.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ HOW IT LOOKS ══════════════ -->
+<section id="how" class="soft">
+  <div class="container">
+    <!-- ✏️ HOW IT LOOKS — כותרת הסקשן -->
+    <div class="center" style="max-width: 720px; margin: 0 auto;">
+      <span class="eyebrow"><span class="dot"></span>מה מקבלים בפועל</span>
+      <h2 class="h2">איך זה הולך להיראות?</h2>
+    </div>
+
+    <!-- ✏️ TILES — 5 ריבועים. כל ריבוע: title + body. הטקסט בין <span class="accent"> מופיע בכתום. -->
+    <div class="tiles-grid">
+
+      <div class="tile">
+        <div class="tile-num">01</div>
+        <div class="tile-title">שקט? <span class="accent">לא ולא נד ראשו.</span></div>
+        <p class="tile-body">
+          לא עוד שיחות חולין מביכות. עם מופע שובר שגרה תהיה אנרגיה כיפית, אווירה מדהימה ומשחקים שעובדים פעם אחר פעם.
+        </p>
+      </div>
+
+      <div class="tile">
+        <div class="tile-num">02</div>
+        <div class="tile-title">אתם <span class="accent">תשכחו לצלם.</span></div>
+        <p class="tile-body">
+          כנראה שהרבה תמונות לא ייצאו מהאירוע הזה, מרוב שתהיו עסוקים לצחוק ולחוות את הרגע, הטלפונים יישארו בכיסים.
+        </p>
+      </div>
+
+      <div class="tile">
+        <div class="tile-num">03</div>
+        <div class="tile-title">גיבוש <span class="accent">לא צפוי.</span></div>
+        <p class="tile-body">
+          אנשים שלא הכירו לפני שעה הולכים להתפוצץ מצחוק יחד, להתחבר, ולדבר אחרי המופע.
+        </p>
+      </div>
+
+      <div class="tile">
+        <div class="tile-num">04</div>
+        <div class="tile-title">הרחבת <span class="accent">הלקסיקון המשותף.</span></div>
+        <p class="tile-body">
+          ככל הנראה תצאו מהערב הזה עם משפטי מחץ חדשים שימשיכו לרוץ בקבוצת הוואטסאפ עוד שבועות קדימה
+          (שלא נדבר על גיפים או מדבקות חדשות, וואו).
+        </p>
+      </div>
+
+      <div class="tile wide">
+        <div class="tile-num">05 · למארגנים</div>
+        <div class="tile-title">מארגנים יקרים? <span class="accent">אתם בראש שקט.</span></div>
+        <p class="tile-body">
+          מהרגע שאני נכנסת בדלת, אתם חוזרים להיות הקהל. תירגעו, תשתתפו, תצחקו, אני על האווירה.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ FAQ ══════════════ -->
+<section id="faq">
+  <div class="narrow">
+    <!-- ✏️ FAQ — כותרת הסקשן -->
+    <div class="center" style="margin-bottom: 20px;">
+      <h2 class="h2">שאלות ותשובות.</h2>
+    </div>
+
+    <!-- ✏️ FAQ ITEMS — לכל שאלה: הטקסט הראשון הוא השאלה, הטקסט ב-.faq-a הוא התשובה. אפשר להוסיף/למחוק בלוקים של <div class="faq-item">. -->
+    <div class="faq-list">
+
+      <div class="faq-item" data-faq>
+        <button class="faq-q" type="button">
+          <span>כמה זמן המופע?</span>
+          <span class="arrow">+</span>
+        </button>
+        <div class="faq-a">כ-60 דקות. כמובן שבקשב לאנרגיה של הקהל, לפרוש בשיא עם טעם של עוד!</div>
+      </div>
+
+      <div class="faq-item" data-faq>
+        <button class="faq-q" type="button">
+          <span>לאיזה סוג של אירועים המופע מתאים?</span>
+          <span class="arrow">+</span>
+        </button>
+        <div class="faq-a">קבוצות מאורגנות, צוותים, מנהלים ועוד. מתאים למגוון רחב של גילאים, היות ואני מתאימה את האנרגיה והתוכן אליכם. והמשחקים? אוניברסליים, תחרותיים ומצחיקים מאוד לכל סוג של קהל.</div>
+      </div>
+
+      <div class="faq-item" data-faq>
+        <button class="faq-q" type="button">
+          <span>מה גודל הקהל האידיאלי?</span>
+          <span class="arrow">+</span>
+        </button>
+        <div class="faq-a">עד 40 משתתפים.</div>
+      </div>
+
+      <div class="faq-item" data-faq>
+        <button class="faq-q" type="button">
+          <span>מה צריך מבחינה טכנית?</span>
+          <span class="arrow">+</span>
+        </button>
+        <div class="faq-a">אני מביאה הגברה ומיקרופונים. יש לדאוג למקום מוצל ונעים, ההופעה היא פרונטלית לקהל (לא בהכרח בשורות).</div>
+      </div>
+
+      <div class="faq-item" data-faq>
+        <button class="faq-q" type="button">
+          <span>אפשר להתאים את התוכן לחברה?</span>
+          <span class="arrow">+</span>
+        </button>
+        <div class="faq-a">כמובן! ברגע שהאירוע נסגר, אשלח שאלון התאמה לאיש או אשת הקשר מטעם החברה, שם תוכלו לספר על פועלכם, על האנשים. כמה שיותר, יותר טוב.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ SOCIAL ══════════════ -->
+<section id="social" class="tight">
+  <div class="container">
+    <div class="social-strip">
+      <!-- ✏️ SOCIAL — כותרת + טקסט. הכפתורים למטה עם הקישורים לרשתות. -->
+      <span class="eyebrow" style="color: var(--orange);"><span class="dot"></span>עוקבים אחריי</span>
+      <h2 class="h2">רוצים לראות עוד?</h2>
+      <p>הצצה לדמויות, לקטעים ולקהלים, בכל המקומות הרגילים.</p>
+
+      <!-- ✏️ SOCIAL LINKS — לעדכן את ה-href של כל <a>. הטקסט (Instagram/YouTube/וכו') הוא בין ה-SVG לסוגר. -->
+      <div class="socials">
+        <a href="https://www.instagram.com/linoynissim/" target="_blank" rel="noopener" class="social-btn">
+          <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.849.07 1.366.062 2.633.335 3.608 1.31.975.975 1.248 2.242 1.31 3.608.058 1.265.07 1.645.07 4.849s-.012 3.584-.07 4.849c-.062 1.366-.335 2.633-1.31 3.608-.975.975-2.242 1.248-3.608 1.31-1.265.058-1.645.07-4.849.07s-3.584-.012-4.849-.07c-1.366-.062-2.633-.335-3.608-1.31-.975-.975-1.248-2.242-1.31-3.608C2.175 15.647 2.163 15.267 2.163 12s.012-3.584.07-4.849c.062-1.366.335-2.633 1.31-3.608.975-.975 2.242-1.248 3.608-1.31C8.416 2.175 8.796 2.163 12 2.163zm0 1.802c-3.155 0-3.507.012-4.744.068-1.09.05-1.684.229-2.077.381-.522.203-.895.446-1.286.837-.391.391-.634.764-.837 1.286-.152.393-.331.987-.381 2.077-.056 1.237-.068 1.589-.068 4.744s.012 3.507.068 4.744c.05 1.09.229 1.684.381 2.077.203.522.446.895.837 1.286.391.391.764.634 1.286.837.393.152.987.331 2.077.381 1.237.056 1.589.068 4.744.068s3.507-.012 4.744-.068c1.09-.05 1.684-.229 2.077-.381.522-.203.895-.446 1.286-.837.391-.391.634-.764.837-1.286.152-.393.331-.987.381-2.077.056-1.237.068-1.589.068-4.744s-.012-3.507-.068-4.744c-.05-1.09-.229-1.684-.381-2.077-.203-.522-.446-.895-.837-1.286-.391-.391-.764-.634-1.286-.837-.393-.152-.987-.331-2.077-.381-1.237-.056-1.589-.068-4.744-.068zm0 3.064A5.135 5.135 0 1 1 6.865 12 5.135 5.135 0 0 1 12 6.865zm0 8.468A3.333 3.333 0 1 0 8.667 12 3.333 3.333 0 0 0 12 15.333zm5.338-8.669a1.2 1.2 0 1 1-1.2-1.2 1.2 1.2 0 0 1 1.2 1.2z"/></svg>
+          Instagram
+        </a>
+        <a href="https://www.youtube.com/@LinoyNissim" target="_blank" rel="noopener" class="social-btn">
+          <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+          YouTube
+        </a>
+        <a href="https://www.facebook.com/linoynissim?locale=he_IL" target="_blank" rel="noopener" class="social-btn">
+          <svg viewBox="0 0 24 24"><path d="M22.675 0H1.325C.593 0 0 .593 0 1.325v21.351C0 23.407.593 24 1.325 24H12.82v-9.294H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116C23.407 24 24 23.407 24 22.676V1.325C24 .593 23.407 0 22.675 0z"/></svg>
+          Facebook
+        </a>
+        <a href="https://www.linoynissim.co.il" target="_blank" rel="noopener" class="social-btn">
+          <svg viewBox="0 0 24 24"><path d="M12 0a12 12 0 1 0 0 24 12 12 0 0 0 0-24zm-1 21.95a10 10 0 0 1-7.35-4.6h3.05a15.1 15.1 0 0 0 4.3 4.55v.05zm0-3.24a13.1 13.1 0 0 1-3.2-3.71H11v3.71zm0-5.71H6.68a13.9 13.9 0 0 1-.34-3 13.9 13.9 0 0 1 .34-3H11v6zm0-8H7.8A13.1 13.1 0 0 1 11 1.29V5zm10.35 4.35A10 10 0 0 1 22 12a10 10 0 0 1-.65 3.35H17.66a15.8 15.8 0 0 0 0-6h3.69zM13 2.05A10 10 0 0 1 20.35 6.65H17.3a15.1 15.1 0 0 0-4.3-4.55v-.05zm4.3 4.6a13.1 13.1 0 0 1 3.2 3.71H17.3V6.65zm-4.3 15.3v-3.71h3.2A13.1 13.1 0 0 1 13 21.95zM17.32 15H13V9h4.32a13.9 13.9 0 0 1 .34 3 13.9 13.9 0 0 1-.34 3zM13 6.65V2.94a13.1 13.1 0 0 1 3.2 3.71H13zM2 12a10 10 0 0 1 .65-3.35H6.34a15.8 15.8 0 0 0 0 6H2.65A10 10 0 0 1 2 12zm4.7 5.35a13.1 13.1 0 0 1-3.2-3.71h3.2v3.71z"/></svg>
+          האתר
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer>
+  <div class="container">
+    <div>© לינוי ניסים <b>ונפלאות</b> · המופע הקומי לחברות</div>
+  </div>
+</footer>
+
+<script>
+  // Nav shadow on scroll
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  // Character bars accordion
+  document.querySelectorAll('[data-char] .char-bar-head').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.closest('[data-char]').classList.toggle('open');
+    });
+  });
+
+  // FAQ accordion
+  document.querySelectorAll('[data-faq] .faq-q').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.closest('[data-faq]').classList.toggle('open');
+    });
+  });
+</script>
+
+</body>
+</html>

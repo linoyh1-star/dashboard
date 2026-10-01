@@ -183,6 +183,18 @@ tr:hover td{background:var(--surface2)}
 .bal-box{background:var(--surface2);border-radius:10px;padding:14px 16px;margin-top:14px}
 .bal-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
 .bal-row:last-child{border-bottom:none}
+/* Hot/cold lead highlighter marks */
+.mk-hot,.mk-cold{padding:1px 7px;border-radius:3px 9px 4px 8px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.mk-hot{background:linear-gradient(100deg,oklch(84% .11 22 / .25),oklch(80% .14 22 / .6) 8%,oklch(82% .13 22 / .5) 92%,oklch(84% .11 22 / .2))}
+.mk-cold{background:linear-gradient(100deg,oklch(88% .07 225 / .25),oklch(85% .09 225 / .7) 8%,oklch(87% .08 225 / .6) 92%,oklch(88% .07 225 / .2))}
+tr.row-hot td:first-child{box-shadow:inset -3px 0 0 oklch(65% .17 22)}
+tr.row-cold td:first-child{box-shadow:inset -3px 0 0 oklch(70% .11 225)}
+tr.row-click{cursor:pointer}
+.temp-pick{display:flex;gap:6px}
+.temp-pick button{flex:1;padding:8px 6px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-family:'Heebo',sans-serif;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2)}
+.temp-pick button.on-hot{background:oklch(90% .08 22);border-color:oklch(70% .15 22);color:oklch(42% .16 22)}
+.temp-pick button.on-cold{background:oklch(92% .05 225);border-color:oklch(72% .1 225);color:oklch(42% .12 225)}
+.temp-pick button.on-none{background:var(--surface2);color:var(--text)}
 </style>
 </head>
 <body>
@@ -218,6 +230,26 @@ function uid(){return Math.random().toString(36).slice(2,9)}
 function fmt(d){try{return new Date(d).toLocaleDateString('he-IL')}catch{return d||'—'}}
 function fmtFull(d){try{return new Date(d).toLocaleDateString('he-IL',{day:'2-digit',month:'long',year:'numeric'})}catch{return d}}
 function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().split('T')[0]}
+// Normalize legacy free-text "answered" values into 'ענתה' / 'לא ענתה' / '' (not marked)
+function normAnswered(v){
+  const s=String(v||'').trim();
+  if(!s)return '';
+  if(s.includes('לא'))return 'לא ענתה';
+  if(s.includes('ענ')||s.includes('כן'))return 'ענתה';
+  return '';
+}
+// Conversion counts only leads we actually talked to: marked 'ענתה' (a closed deal always counts)
+function isAnswered(l){return l.status==='closed'||normAnswered(l.answered)==='ענתה'}
+function convStats(arr){
+  const ans=arr.filter(isAnswered).length;
+  const closed=arr.filter(l=>l.status==='closed').length;
+  return{ans,closed,conv:ans?Math.round(closed/ans*100):0};
+}
+const TEMP_RANK={hot:0,'':1,cold:2};
+function TempName({lead,children}){
+  const cls=lead?.temp==='hot'?'mk-hot':lead?.temp==='cold'?'mk-cold':'';
+  return cls?<span className={cls}>{children}</span>:<>{children}</>;
+}
 
 // ── STORAGE ──────────────────────────────────────────────────────
 const load=(k,def)=>{try{const s=localStorage.getItem(k);return s?JSON.parse(s):def}catch{return def}};
@@ -258,6 +290,16 @@ function LineChart({datasets,labels,height=190}){
     ch.current=new Chart(ref.current,{type:'line',data:{labels,datasets:datasets.map(d=>({...d,tension:.4,pointRadius:3,borderWidth:2.5,fill:d.fill||false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Heebo',size:11},boxWidth:10,padding:10}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Heebo',size:11}}},y:{grid:{color:'#f0ede8'},ticks:{font:{family:'Heebo',size:11}},beginAtZero:true}}}});
     return()=>ch.current?.destroy();
   },[JSON.stringify(datasets),JSON.stringify(labels)]);
+  return <div style={{height}}><canvas ref={ref}/></div>;
+}
+function StackedBarChart({labels,datasets,height=240,horizontal=false}){
+  const ref=useRef();const ch=useRef();
+  useEffect(()=>{
+    if(!ref.current)return;ch.current?.destroy();
+    const ax={stacked:true,ticks:{font:{family:'Heebo',size:11},precision:0}};
+    ch.current=new Chart(ref.current,{type:'bar',data:{labels,datasets:datasets.map(d=>({...d,borderRadius:3,borderSkipped:false,maxBarThickness:42}))},options:{indexAxis:horizontal?'y':'x',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Heebo',size:11},boxWidth:10,padding:10}}},scales:{x:{...ax,grid:{display:horizontal,color:'#f0ede8'},beginAtZero:true},y:{...ax,grid:{display:!horizontal,color:'#f0ede8'},beginAtZero:true}}}});
+    return()=>ch.current?.destroy();
+  },[JSON.stringify(datasets),JSON.stringify(labels),horizontal]);
   return <div style={{height}}><canvas ref={ref}/></div>;
 }
 function DonutChart({data,labels,colors,height=190}){
@@ -318,10 +360,10 @@ function ReminderBanner({leads}){
 
 // ── LEAD FORM (unified with event fields) ────────────────────────
 function LeadFormModal({lead,onSave,onClose}){
-  const blank={name:'',source:'קמפיין מטא',answered:'',eventType:'רווקות',status:'open',lostReason:'',
+  const blank={name:'',source:'קמפיין מטא',answered:'',temp:'',eventType:'רווקות',status:'open',lostReason:'',
     amount:0,advance:0,advanceDone:false,eventDate:'',location:'',notes:'',
     createdAt:new Date().toISOString().split('T')[0],brideName:'',guideName:''};
-  const [f,setF]=useState(lead||blank);
+  const [f,setF]=useState(()=>lead?{...lead,answered:normAnswered(lead.answered),temp:lead.temp||''}:blank);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   // Track "other reason" mode separately so spaces in custom text are preserved
   const [otherMode,setOtherMode]=useState(()=>!!(lead?.lostReason&&!LOST_REASONS.includes(lead.lostReason)));
@@ -343,8 +385,19 @@ function LeadFormModal({lead,onSave,onClose}){
                   <option value="closed">נסגר</option><option value="lost">לא נסגר</option>
                 </select>
               </div>
-              <div className="fg"><label className="fl">ענה/לא ענה</label><input className="fi" value={f.answered} onChange={e=>s('answered',e.target.value)} placeholder="ענתה / לא ענתה"/></div>
+              <div className="fg"><label className="fl">ענתה/לא ענתה</label>
+                <select className="fi" value={f.answered} onChange={e=>s('answered',e.target.value)}>
+                  <option value="">לא סומן</option><option value="ענתה">ענתה</option><option value="לא ענתה">לא ענתה</option>
+                </select>
+              </div>
               <div className="fg"><label className="fl">תאריך פניה</label><input type="date" className="fi" value={f.createdAt} onChange={e=>s('createdAt',e.target.value)}/></div>
+              <div className="fg"><label className="fl">סיווג ליד</label>
+                <div className="temp-pick">
+                  <button type="button" className={f.temp==='hot'?'on-hot':''} onClick={()=>s('temp','hot')}>🔥 חם</button>
+                  <button type="button" className={f.temp==='cold'?'on-cold':''} onClick={()=>s('temp','cold')}>❄️ קר</button>
+                  <button type="button" className={!f.temp?'on-none':''} onClick={()=>s('temp','')}>ללא</button>
+                </div>
+              </div>
             </div>
             {f.status==='lost'&&<div className="fg" style={{background:'var(--redbg)',border:'1px solid oklch(91% .05 20)',borderRadius:8,padding:'12px 14px',marginTop:4}}>
               <label className="fl" style={{color:'var(--red)',fontWeight:700}}>למה לא נסגר? *</label>
@@ -406,6 +459,41 @@ function LeadFormModal({lead,onSave,onClose}){
   );
 }
 
+// ── LEAD DETAIL MODAL (non-closed leads) ─────────────────────────
+function LeadDetailModal({lead,onEdit,onClose}){
+  const ans=normAnswered(lead.answered);
+  const rows=[
+    ['סטטוס',<SBadge status={lead.status}/>],
+    ['סיווג',lead.temp==='hot'?<span className="mk-hot">🔥 חם</span>:lead.temp==='cold'?<span className="mk-cold">❄️ קר</span>:'—'],
+    ['ענתה/לא ענתה',ans||'לא סומן'],
+    ['תאריך פניה',fmt(lead.createdAt)],
+    ['מקור',<SourceDot source={lead.source}/>],
+    ['סוג אירוע',lead.eventType],
+    ['שם הכלה / מוזמן',lead.brideName||'—'],
+    ['תאריך האירוע',lead.eventDate?fmtFull(lead.eventDate):'—'],
+    ['מקום האירוע',lead.location||'—'],
+    ['הצעת מחיר',lead.amount?`₪${lead.amount.toLocaleString()}`:'—'],
+  ];
+  if(lead.status==='lost')rows.push(['למה לא נסגר',lead.lostReason||'—']);
+  return(
+    <div className="modal-ov" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:500}}>
+        <div className="mh"><span className="mt"><TempName lead={lead}>{lead.name}</TempName></span><button className="xbtn" onClick={onClose}>×</button></div>
+        <div className="mb">
+          {rows.map(([k,v])=>(
+            <div key={k} style={{display:'flex',gap:10,padding:'9px 0',borderBottom:'1px solid var(--border)',alignItems:'baseline'}}>
+              <span style={{fontWeight:600,fontSize:13,color:'var(--text2)',minWidth:110}}>{k}</span>
+              <span style={{fontSize:13}}>{v}</span>
+            </div>
+          ))}
+          {lead.notes&&<div style={{marginTop:12,fontSize:13,color:'var(--text2)',lineHeight:1.6,whiteSpace:'pre-wrap'}}><strong>הערות:</strong> {lead.notes}</div>}
+        </div>
+        <div className="mf"><button className="btn btn-p btn-sm" onClick={onEdit}>עריכה</button><button className="btn btn-g btn-sm" onClick={onClose}>סגור</button></div>
+      </div>
+    </div>
+  );
+}
+
 // ── EVENT DETAIL MODAL ───────────────────────────────────────────
 function EventDetailModal({lead,onEdit,onClose}){
   const d=lead.eventDate?new Date(lead.eventDate):null;
@@ -457,7 +545,7 @@ function Dashboard({leads}){
   // Revenue by event date (not creation date)
   const eventLeadsInYear=leads.filter(l=>l.status==='closed'&&l.eventDate&&(selYear==='הכל'||l.eventDate.startsWith(selYear)));
   const totalRev=eventLeadsInYear.reduce((s,l)=>s+(l.amount||0),0);
-  const conv=filtered.length?Math.round(closed.length/filtered.length*100):0;
+  const {ans:answeredCount,conv}=convStats(filtered);
 
   // Monthly chart
   const mLabels=MONTHS.map(m=>m.slice(0,3));
@@ -480,7 +568,7 @@ function Dashboard({leads}){
     const cl=yl.filter(l=>l.status==='closed');
     const eventsInY=leads.filter(l=>l.status==='closed'&&l.eventDate?.startsWith(y));
     const rev=eventsInY.reduce((s,l)=>s+(l.amount||0),0);
-    return{total:yl.length,closed:cl.length,lost:yl.filter(l=>l.status==='lost').length,rev,conv:yl.length?Math.round(cl.length/yl.length*100):0,avg:eventsInY.length?Math.round(rev/eventsInY.length):0};
+    return{total:yl.length,closed:cl.length,lost:yl.filter(l=>l.status==='lost').length,rev,conv:convStats(yl).conv,avg:eventsInY.length?Math.round(rev/eventsInY.length):0};
   };
   const allYears=[...years].sort((a,b)=>a-b).map(String).filter(y=>y!=='הכל');
   const yoyRows=allYears.map((y,i)=>{
@@ -508,7 +596,7 @@ function Dashboard({leads}){
 
       <div className="kgrid">
         <div className="kcard"><div className="klabel">לידים</div><div className="kval">{filtered.length}</div><div className="ksub">{closed.length} נסגרו · {lost.length} לא נסגרו</div></div>
-        <div className="kcard"><div className="klabel">יחס המרה</div><div className="kval" style={{color:'var(--accent)'}}>{conv}%</div><div className="ksub">{closed.length} עסקאות</div></div>
+        <div className="kcard"><div className="klabel">יחס המרה</div><div className="kval" style={{color:'var(--accent)'}}>{conv}%</div><div className="ksub">{closed.length} עסקאות מתוך {answeredCount} שענו</div></div>
         <div className="kcard"><div className="klabel">הכנסות</div><div className="kval" style={{color:'var(--green)'}}>₪{(totalRev/1000).toFixed(0)}K</div><div className="ksub">ממוצע ₪{closed.length?Math.round(totalRev/closed.length).toLocaleString():0}</div></div>
         <div className="kcard"><div className="klabel">אירועי {MONTHS[now.getMonth()]}</div><div className="kval">{thisMonthEvs.length}</div><div className="ksub">{thisMonthEvs.filter(l=>new Date(l.eventDate)>=now).length} עדיין קרובים</div></div>
       </div>
@@ -578,7 +666,8 @@ function Dashboard({leads}){
           const evMonth=leads.filter(l=>l.status==='closed'&&l.eventDate&&l.eventDate.startsWith(yr)&&new Date(l.eventDate).getMonth()===i);
           const rev=evMonth.reduce((s,l)=>s+(l.amount||0),0);
           const isFuture=now.getFullYear()===+yr&&i>now.getMonth();
-          return{name,total:ml.length,closed:cl.length,lost:ml.filter(l=>l.status==='lost').length,rev,conv:ml.length?Math.round(cl.length/ml.length*100):0,isFuture};
+          const cs=convStats(ml);
+          return{name,total:ml.length,closed:cl.length,lost:ml.filter(l=>l.status==='lost').length,rev,conv:cs.conv,ans:cs.ans,isFuture};
         });
         const maxRev=Math.max(...monthlyRows.map(m=>m.rev),1);
         const totals={total:monthlyRows.reduce((s,m)=>s+m.total,0),closed:monthlyRows.reduce((s,m)=>s+m.closed,0),lost:monthlyRows.reduce((s,m)=>s+m.lost,0),rev:monthlyRows.reduce((s,m)=>s+m.rev,0)};
@@ -593,7 +682,7 @@ function Dashboard({leads}){
                   <td>{m.total||'—'}</td>
                   <td style={{color:'var(--green)',fontWeight:m.closed?600:400}}>{m.closed||'—'}</td>
                   <td style={{color:'var(--red)'}}>{m.lost||'—'}</td>
-                  <td>{m.total>0?<span style={{fontWeight:700,color:m.conv>40?'var(--green)':m.conv>20?'#9a6d08':'var(--red)'}}>{m.conv}%</span>:'—'}</td>
+                  <td>{m.ans>0?<span style={{fontWeight:700,color:m.conv>40?'var(--green)':m.conv>20?'#9a6d08':'var(--red)'}}>{m.conv}%</span>:'—'}</td>
                   <td style={{fontWeight:m.rev?600:400,color:m.rev?'var(--accent)':'var(--text3)'}}>{m.rev?`₪${m.rev.toLocaleString()}`:'—'}</td>
                   <td><div className="pbar" style={{width:88}}><div className="pf" style={{width:`${m.rev/maxRev*100}%`,background:'oklch(50% .19 22)'}}/></div></td>
                 </tr>
@@ -665,6 +754,8 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
   const [fType,setFType]=useState('all');
   const [fYear,setFYear]=useState(cy);
   const [fMonth,setFMonth]=useState('all');
+  const [fAns,setFAns]=useState('all');
+  const [fTemp,setFTemp]=useState('all');
   const [showForm,setShowForm]=useState(false);
   const [editL,setEditL]=useState(null);
   const [viewL,setViewL]=useState(null);
@@ -761,7 +852,8 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
             notes:String(pick(row,'הערות','notes')||'').trim(),
             createdAt,
             lostReason:String(pick(row,'למה לא נסגר?','סיבה')||'').trim(),
-            answered:String(pick(row,'ענה/לא ענה','ענה')||'').trim(),
+            answered:normAnswered(pick(row,'ענה/לא ענה','ענתה/לא ענתה','ענה')),
+            temp:(t=>t.includes('חם')?'hot':t.includes('קר')?'cold':'')(String(pick(row,'חם/קר','סיווג')||'')),
             advance:0,advanceDone:false,brideName:'',guideName:''
           };
         }).filter(l=>l.name);
@@ -781,6 +873,8 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
     if(fType!=='all'&&l.eventType!==fType)return false;
     if(fYear!=='all'&&!l.createdAt?.startsWith(fYear))return false;
     if(fMonth!=='all'&&l.createdAt?.slice(5,7)!==fMonth)return false;
+    if(fAns!=='all'&&normAnswered(l.answered)!==(fAns==='none'?'':fAns))return false;
+    if(fTemp!=='all'&&(l.temp||'')!==(fTemp==='none'?'':fTemp))return false;
     const q=search.toLowerCase();
     return !q||l.name.toLowerCase().includes(q)||(l.location||'').includes(q)||(l.brideName||'').includes(q);
   }).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -861,29 +955,36 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
         <select className="fi" style={{width:130}} value={fType} onChange={e=>setFType(e.target.value)}>
           <option value="all">כל הסוגים</option>{EVENT_TYPES.map(t=><option key={t}>{t}</option>)}
         </select>
+        <select className="fi" style={{width:130}} value={fAns} onChange={e=>setFAns(e.target.value)}>
+          <option value="all">ענתה/לא ענתה</option><option value="ענתה">ענתה</option><option value="לא ענתה">לא ענתה</option><option value="none">לא סומן</option>
+        </select>
+        <select className="fi" style={{width:120}} value={fTemp} onChange={e=>setFTemp(e.target.value)}>
+          <option value="all">חם/קר</option><option value="hot">🔥 חם</option><option value="cold">❄️ קר</option><option value="none">ללא סיווג</option>
+        </select>
         <span style={{fontSize:12,color:'var(--text3)',marginRight:'auto'}}>{filtered.length} תוצאות</span>
       </div>
       <div className="card"><div style={{overflowX:'auto'}}>
         <table>
           <thead><tr>
             <th style={{width:36}}><input type="checkbox" checked={filtered.length>0&&filtered.every(l=>selected.has(l.id))} onChange={e=>{const all=new Set(selected);if(e.target.checked)filtered.forEach(l=>all.add(l.id));else filtered.forEach(l=>all.delete(l.id));setSelected(all)}} style={{cursor:'pointer'}}/></th>
-            <th>שם ליד</th><th>תאריך פניה</th><th>סטטוס</th><th>מקור</th><th>סוג</th><th>תאריך אירוע</th><th>לתשלום</th><th>שם הכלה</th><th>הערות</th><th style={{width:80}}></th>
+            <th>שם ליד</th><th>תאריך פניה</th><th>סטטוס</th><th>ענתה</th><th>מקור</th><th>סוג</th><th>תאריך אירוע</th><th>לתשלום</th><th>שם הכלה</th><th>הערות</th><th style={{width:80}}></th>
           </tr></thead>
           <tbody>{filtered.map(l=>{
             const total=l.amount||0;
-            return <tr key={l.id} style={selected.has(l.id)?{background:'var(--accentbg)'}:{}}>
-              <td><input type="checkbox" checked={selected.has(l.id)} onChange={()=>toggleSelect(l.id)} style={{cursor:'pointer'}}/></td>
-              <td><div style={{fontWeight:600,fontSize:13}}>{l.name}</div></td>
+            const ans=normAnswered(l.answered);
+            return <tr key={l.id} className={`row-click ${l.temp==='hot'?'row-hot':l.temp==='cold'?'row-cold':''}`} style={selected.has(l.id)?{background:'var(--accentbg)'}:{}} onClick={()=>setViewL(l)}>
+              <td onClick={e=>e.stopPropagation()}><input type="checkbox" checked={selected.has(l.id)} onChange={()=>toggleSelect(l.id)} style={{cursor:'pointer'}}/></td>
+              <td><div style={{fontWeight:600,fontSize:13}}><TempName lead={l}>{l.name}</TempName></div></td>
               <td style={{fontSize:12,color:'var(--text2)',whiteSpace:'nowrap'}}>{fmt(l.createdAt)}</td>
               <td><SBadge status={l.status}/></td>
+              <td>{ans==='ענתה'?<span className="badge bg">ענתה</span>:ans==='לא ענתה'?<span className="badge br">לא ענתה</span>:<span style={{color:'var(--text3)'}}>—</span>}</td>
               <td><SourceDot source={l.source}/></td>
               <td><span style={{fontSize:12,color:'var(--text2)'}}>{l.eventType}</span></td>
               <td style={{fontSize:12,whiteSpace:'nowrap'}}>{l.eventDate?fmt(l.eventDate):'—'}</td>
               <td style={{fontWeight:total?600:400,color:total?'var(--green)':'var(--text3)'}}>{total?`₪${total.toLocaleString()}`:'—'}</td>
               <td style={{fontSize:12,color:'var(--text2)'}}>{l.brideName||'—'}</td>
               <td style={{fontSize:11,color:'var(--text2)',maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={l.notes}>{l.notes||'—'}</td>
-              <td><div style={{display:'flex',gap:3}}>
-                {l.status==='closed'&&<button className="btn btn-icon btn-g" onClick={()=>setViewL(l)} title="פרטים">↗</button>}
+              <td onClick={e=>e.stopPropagation()}><div style={{display:'flex',gap:3}}>
                 <button className="btn btn-icon btn-g" onClick={()=>{setEditL(l);setShowForm(true)}} title="עריכה">✎</button>
                 <button className="btn btn-icon btn-g" style={{color:'var(--red)'}} onClick={()=>{if(confirm('למחוק?'))onDelete(l.id)}}>✕</button>
               </div></td>
@@ -892,7 +993,9 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
         </table>
       </div></div>
       {showForm&&<LeadFormModal lead={editL} onSave={handleSave} onClose={()=>{setShowForm(false);setEditL(null)}}/>}
-      {viewL&&<EventDetailModal lead={viewL} onEdit={()=>{setViewL(null);setEditL(viewL);setShowForm(true)}} onClose={()=>setViewL(null)}/>}
+      {viewL&&(viewL.status==='closed'
+        ?<EventDetailModal lead={viewL} onEdit={()=>{setViewL(null);setEditL(viewL);setShowForm(true)}} onClose={()=>setViewL(null)}/>
+        :<LeadDetailModal lead={viewL} onEdit={()=>{setViewL(null);setEditL(viewL);setShowForm(true)}} onClose={()=>setViewL(null)}/>)}
     </div>
   );
 }
@@ -976,25 +1079,117 @@ function EventsPage({leads,onEdit}){
 }
 
 // ── ANALYTICS PAGE ───────────────────────────────────────────────
+// ── CROSS-TAB COMPARISON ─────────────────────────────────────────
+const STATUS_LABEL={open:'פתוח',follow:'פולו אפ',closed:'נסגר',lost:'לא נסגר'};
+const STATUS_COLOR={'פתוח':'oklch(55% .15 240)','פולו אפ':'oklch(68% .15 80)','נסגר':'oklch(52% .15 145)','לא נסגר':'oklch(55% .18 20)'};
+const PALETTE=['oklch(55% .17 240)','oklch(55% .19 22)','oklch(55% .15 145)','oklch(65% .16 80)','oklch(55% .2 330)','oklch(55% .14 190)','oklch(50% .14 290)','oklch(62% .15 50)','oklch(55% .04 0)'];
+function answeredLabel(l){return isAnswered(l)?'ענתה':normAnswered(l.answered)==='לא ענתה'?'לא ענתה':'לא סומן'}
+// Each dimension: how to read a lead's value (null = lead not relevant), display order and colors
+const DIMS={
+  source:{label:'מקור',get:l=>l.source||'אחר',order:SOURCES,color:v=>SRC_HEX[v]},
+  answered:{label:'ענתה / לא ענתה',get:answeredLabel,order:['ענתה','לא ענתה','לא סומן'],color:v=>({'ענתה':'oklch(52% .15 145)','לא ענתה':'oklch(55% .18 20)','לא סומן':'oklch(75% .02 60)'})[v]},
+  status:{label:'סטטוס',get:l=>STATUS_LABEL[l.status]||l.status,order:['פתוח','פולו אפ','נסגר','לא נסגר'],color:v=>STATUS_COLOR[v]},
+  reason:{label:'סיבת אי-סגירה',get:l=>l.status==='lost'?(l.lostReason||'לא צוינה'):null,order:[...LOST_REASONS,'לא צוינה'],note:'רק לידים בסטטוס "לא נסגר"'},
+  temp:{label:'חם / קר',get:l=>l.temp==='hot'?'חם':l.temp==='cold'?'קר':'ללא סיווג',order:['חם','קר','ללא סיווג'],color:v=>({'חם':'oklch(62% .17 22)','קר':'oklch(70% .11 225)','ללא סיווג':'oklch(78% .02 60)'})[v]},
+  eventType:{label:'סוג אירוע',get:l=>l.eventType||'אחר',order:EVENT_TYPES,color:v=>TYPE_CSS[v]},
+  month:{label:'חודש',get:l=>{const m=+String(l.createdAt||'').slice(5,7);return m?MONTHS[m-1]:null},order:MONTHS},
+};
+function dimValues(dim,leads){
+  const present=new Set(leads.map(dim.get).filter(v=>v!==null&&v!==undefined));
+  return [...dim.order.filter(v=>present.has(v)),...[...present].filter(v=>!dim.order.includes(v))];
+}
+function CrossTab({leads,rowKey,colKey,chart=true}){
+  const [pct,setPct]=useState(false);
+  const R=DIMS[rowKey],C=DIMS[colKey];
+  const rel=leads.filter(l=>R.get(l)!=null&&C.get(l)!=null);
+  const rows=dimValues(R,rel),cols=dimValues(C,rel);
+  const cell=(r,c)=>rel.filter(l=>R.get(l)===r&&C.get(l)===c).length;
+  const m=rows.map(r=>cols.map(c=>cell(r,c)));
+  const rowTot=m.map(a=>a.reduce((s,x)=>s+x,0));
+  const colTot=cols.map((_,j)=>m.reduce((s,a)=>s+a[j],0));
+  const max=Math.max(1,...m.flat());
+  const colColor=(c,j)=>C.color?.(c)||PALETTE[j%PALETTE.length];
+  if(!rel.length)return <div style={{padding:24,textAlign:'center',color:'var(--text3)',fontSize:13}}>אין נתונים לתקופה הזו</div>;
+  return <div>
+    {chart&&<StackedBarChart horizontal height={Math.max(180,rows.length*38+70)} labels={rows}
+      datasets={cols.map((c,j)=>({label:c,data:m.map(a=>a[j]),backgroundColor:colColor(c,j)}))}/>}
+    <div style={{display:'flex',alignItems:'center',gap:8,margin:'14px 0 8px',flexWrap:'wrap'}}>
+      <span style={{fontSize:12,color:'var(--text2)'}}>{rel.length} לידים{R.note||C.note?` · ${R.note||C.note}`:''}</span>
+      <div style={{marginRight:'auto',display:'flex',gap:4}}>
+        <button className={`btn btn-sm ${!pct?'btn-p':'btn-s'}`} onClick={()=>setPct(false)}>מספרים</button>
+        <button className={`btn btn-sm ${pct?'btn-p':'btn-s'}`} onClick={()=>setPct(true)}>% מהשורה</button>
+      </div>
+    </div>
+    <div style={{overflowX:'auto'}}><table>
+      <thead><tr><th>{R.label} \ {C.label}</th>{cols.map((c,j)=><th key={c}><span className="dot" style={{background:colColor(c,j)}}/>{c}</th>)}<th>סה"כ</th></tr></thead>
+      <tbody>
+        {rows.map((r,i)=><tr key={r}>
+          <td style={{fontWeight:600,whiteSpace:'nowrap'}}>{r}</td>
+          {m[i].map((v,j)=><td key={j} style={{background:v?`color-mix(in oklch, ${colColor(cols[j],j)} ${Math.round(8+v/max*30)}%, transparent)`:undefined,fontWeight:v?600:400,color:v?'var(--text)':'var(--text3)'}}>
+            {v?(pct?`${Math.round(v/rowTot[i]*100)}%`:v):'—'}{v&&pct?<span style={{fontSize:10,color:'var(--text3)',marginRight:4}}>({v})</span>:null}
+          </td>)}
+          <td style={{fontWeight:700}}>{rowTot[i]}</td>
+        </tr>)}
+        <tr style={{background:'var(--surface2)',fontWeight:700}}>
+          <td>סה"כ</td>{colTot.map((v,j)=><td key={j}>{pct?`${Math.round(v/rel.length*100)}%`:v}</td>)}<td>{rel.length}</td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>;
+}
+const COMPARE_PRESETS=[
+  {l:'מי לא ענתה — לפי מקור',r:'source',c:'answered'},
+  {l:'סיבות אי-סגירה — לפי מקור',r:'source',c:'reason'},
+  {l:'סטטוס — לפי מקור',r:'source',c:'status'},
+  {l:'חם/קר — לפי מקור',r:'source',c:'temp'},
+  {l:'ענתה/לא ענתה — לפי חודש',r:'month',c:'answered'},
+];
+function CompareTab({leads}){
+  const [rowKey,setRowKey]=useState('source');
+  const [colKey,setColKey]=useState('answered');
+  return <div className="card">
+    <div className="ch"><span className="ct">השוואת נתונים</span></div>
+    <div className="cb">
+      <div className="fb" style={{marginBottom:10}}>
+        {COMPARE_PRESETS.map(p=><button key={p.l} className={`btn btn-sm ${rowKey===p.r&&colKey===p.c?'btn-p':'btn-s'}`} onClick={()=>{setRowKey(p.r);setColKey(p.c)}}>{p.l}</button>)}
+      </div>
+      <div className="fb">
+        <span style={{fontSize:12,fontWeight:700,color:'var(--text2)'}}>שורות:</span>
+        <select className="fi" style={{width:160}} value={rowKey} onChange={e=>setRowKey(e.target.value)}>{Object.entries(DIMS).map(([k,d])=><option key={k} value={k} disabled={k===colKey}>{d.label}</option>)}</select>
+        <span style={{fontSize:12,fontWeight:700,color:'var(--text2)'}}>מול:</span>
+        <select className="fi" style={{width:160}} value={colKey} onChange={e=>setColKey(e.target.value)}>{Object.entries(DIMS).map(([k,d])=><option key={k} value={k} disabled={k===rowKey}>{d.label}</option>)}</select>
+        <button className="btn btn-sm btn-g" onClick={()=>{setRowKey(colKey);setColKey(rowKey)}} title="החלף שורות ועמודות">⇄ החלף</button>
+      </div>
+      <CrossTab leads={leads} rowKey={rowKey} colKey={colKey}/>
+    </div>
+  </div>;
+}
+
 function Analytics({leads}){
   const [tab,setTab]=useState('מקורות');
   const years=getYears(leads);
   const cy=new Date().getFullYear().toString();
   const [year,setYear]=useState(cy);
-  const yl=year==='הכל'?leads:leads.filter(l=>l.createdAt?.startsWith(year));
+  const [month,setMonth]=useState('all');
+  const yl=leads.filter(l=>(year==='הכל'||l.createdAt?.startsWith(year))&&(month==='all'||l.createdAt?.slice(5,7)===month));
+  const periodLabel=`${month!=='all'?MONTHS[+month-1]+' ':''}${year==='הכל'?(month!=='all'?'(כל השנים)':'כל הזמנים'):year}`;
   const closed=yl.filter(l=>l.status==='closed');
-  const answered=yl.filter(l=>l.answered&&l.answered.includes('ענ')&&!l.answered.includes('לא'));
+  const answered=yl.filter(isAnswered);
+  const notAnswered=yl.filter(l=>l.status!=='closed'&&normAnswered(l.answered)==='לא ענתה');
+  const unmarked=yl.length-answered.length-notAnswered.length;
+  const yConv=convStats(yl).conv;
   const srcStats=SOURCES.map(src=>{
-    const total=yl.filter(l=>l.source===src).length;
-    const cl=yl.filter(l=>l.source===src&&l.status==='closed').length;
-    const rev=yl.filter(l=>l.source===src&&l.status==='closed').reduce((s,l)=>s+(l.amount||0),0);
-    return{source:src,total,closed:cl,conv:total>=3?Math.round(cl/total*100):null,rev,reliable:total>=3};
+    const sl=yl.filter(l=>l.source===src);
+    const {ans,closed:cl,conv}=convStats(sl);
+    const rev=sl.filter(l=>l.status==='closed').reduce((s,l)=>s+(l.amount||0),0);
+    const noAns=sl.filter(l=>answeredLabel(l)==='לא ענתה').length;
+    return{source:src,total:sl.length,ans,noAns,closed:cl,conv:ans>=3?conv:null,rev,reliable:ans>=3};
   }).filter(s=>s.total>0).sort((a,b)=>b.total-a.total);
   const typeStats=EVENT_TYPES.map(t=>{
-    const total=yl.filter(l=>l.eventType===t).length;
-    const cl=yl.filter(l=>l.eventType===t&&l.status==='closed').length;
-    const rev=yl.filter(l=>l.eventType===t&&l.status==='closed').reduce((s,l)=>s+(l.amount||0),0);
-    return{type:t,total,closed:cl,conv:total?Math.round(cl/total*100):0,rev};
+    const tl=yl.filter(l=>l.eventType===t);
+    const {ans,closed:cl,conv}=convStats(tl);
+    const rev=tl.filter(l=>l.status==='closed').reduce((s,l)=>s+(l.amount||0),0);
+    return{type:t,total:tl.length,ans,closed:cl,conv,rev};
   }).filter(s=>s.total>0).sort((a,b)=>b.total-a.total);
   const reasons={};
   yl.filter(l=>l.status==='lost'&&l.lostReason).forEach(l=>{reasons[l.lostReason]=(reasons[l.lostReason]||0)+1});
@@ -1004,36 +1199,70 @@ function Analytics({leads}){
   return(
     <div>
       <div className="ph">
-        <div><div className="pt">ניתוח המרות</div><div className="ps">ביצועים, תובנות ודרכי פעולה</div></div>
-        <select className="fi" style={{width:130}} value={year} onChange={e=>setYear(e.target.value)}>
-          <option value="הכל">כל הזמנים</option>{years.map(y=><option key={y} value={String(y)}>{y}</option>)}
-        </select>
+        <div><div className="pt">ניתוח המרות</div><div className="ps">ביצועים, תובנות ודרכי פעולה · {periodLabel}</div></div>
+        <div style={{display:'flex',gap:8}}>
+          <select className="fi" style={{width:130}} value={month} onChange={e=>setMonth(e.target.value)}>
+            <option value="all">כל החודשים</option>
+            {MONTHS.map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
+          </select>
+          <select className="fi" style={{width:130}} value={year} onChange={e=>setYear(e.target.value)}>
+            <option value="הכל">כל הזמנים</option>{years.map(y=><option key={y} value={String(y)}>{y}</option>)}
+          </select>
+        </div>
       </div>
       <div className="kgrid" style={{marginBottom:18}}>
         <div className="kcard"><div className="klabel">לידים</div><div className="kval">{yl.length}</div></div>
         <div className="kcard"><div className="klabel">הכנסות</div><div className="kval" style={{color:'var(--accent)'}}>₪{closed.reduce((s,l)=>s+(l.amount||0),0).toLocaleString()}</div><div className="ksub">ממוצע ₪{closed.length?Math.round(closed.reduce((s,l)=>s+(l.amount||0),0)/closed.length).toLocaleString():0}</div></div>
-        <div className="kcard"><div className="klabel">נסגרו</div><div className="kval" style={{color:'var(--green)'}}>{closed.length}</div><div className="ksub">{yl.length?Math.round(closed.length/yl.length*100):0}% המרה</div></div>
+        <div className="kcard"><div className="klabel">נסגרו</div><div className="kval" style={{color:'var(--green)'}}>{closed.length}</div><div className="ksub">{yConv}% המרה מתוך {answered.length} שענו</div></div>
         <div className="kcard"><div className="klabel">לא נסגרו</div><div className="kval" style={{color:'var(--red)'}}>{yl.filter(l=>l.status==='lost').length}</div><div className="ksub">{yl.length?Math.round(yl.filter(l=>l.status==='lost').length/yl.length*100):0}% מהלידים</div></div>
       </div>
-      <div className="tabs">{['מקורות','סוגי אירועים','סיבות אי-סגירה','פאנל המרה'].map(t=><div key={t} className={`tab ${tab===t?'active':''}`} onClick={()=>setTab(t)}>{t}</div>)}</div>
+      <div className="tabs">{['מקורות','סטטוסים','השוואה','סוגי אירועים','סיבות אי-סגירה','פאנל המרה'].map(t=><div key={t} className={`tab ${tab===t?'active':''}`} onClick={()=>setTab(t)}>{t}</div>)}</div>
 
       {tab==='מקורות'&&<div className="g2">
         <div className="card"><div className="ch"><span className="ct">לידים לפי מקור</span></div><div className="cb"><BarChart height={200} labels={srcStats.map(s=>s.source)} data={srcStats.map(s=>s.total)} colors={srcStats.map(s=>SRC_HEX[s.source]||'#aaa')}/></div></div>
         <div className="card"><div className="ch"><span className="ct">ביצועי מקורות</span></div><div style={{overflowX:'auto'}}>
-          <table><thead><tr><th>מקור</th><th>לידים</th><th>נסגרו</th><th>המרה</th><th>הכנסות</th></tr></thead><tbody>
-            {srcStats.map(s=><tr key={s.source}><td><SourceDot source={s.source}/></td><td style={{fontWeight:600}}>{s.total}</td><td>{s.closed}</td>
+          <table><thead><tr><th>מקור</th><th>לידים</th><th>ענו</th><th>לא ענו</th><th>נסגרו</th><th>המרה</th><th>הכנסות</th></tr></thead><tbody>
+            {srcStats.map(s=><tr key={s.source}><td><SourceDot source={s.source}/></td><td style={{fontWeight:600}}>{s.total}</td><td>{s.ans}</td><td style={{color:s.noAns?'var(--red)':'var(--text3)'}}>{s.noAns?`${s.noAns} (${Math.round(s.noAns/s.total*100)}%)`:'—'}</td><td>{s.closed}</td>
               <td>{s.conv!==null?<span style={{fontWeight:700,color:s.conv>40?'var(--green)':s.conv>20?'var(--yellow)':'var(--red)'}}>{s.conv}%</span>:<span style={{color:'var(--text3)',fontSize:11}}>מעט נתונים</span>}</td>
               <td style={{color:'var(--green)',fontWeight:600}}>{s.rev?`₪${s.rev.toLocaleString()}`:'—'}</td></tr>)}
           </tbody></table>
         </div></div>
       </div>}
 
+      {tab==='השוואה'&&<CompareTab leads={yl}/>}
+
+      {tab==='סטטוסים'&&(()=>{
+        const order=['open','follow','closed','lost'];
+        const counts=order.map(k=>yl.filter(l=>l.status===k).length);
+        const showMonthly=month==='all'&&year!=='הכל';
+        return <div>
+          <div className="kgrid" style={{marginBottom:18}}>
+            {order.map((k,i)=><div key={k} className="kcard" style={{borderTop:`3px solid ${STATUS_COLOR[STATUS_LABEL[k]]}`}}>
+              <div className="klabel">{STATUS_LABEL[k]}</div>
+              <div className="kval">{counts[i]}</div>
+              <div className="ksub">{yl.length?Math.round(counts[i]/yl.length*100):0}% מהלידים</div>
+            </div>)}
+          </div>
+          <div className={showMonthly?'g21':'g2'}>
+            {showMonthly&&<div className="card"><div className="ch"><span className="ct">סטטוסים לפי חודש · {year}</span></div><div className="cb">
+              <StackedBarChart height={240} labels={MONTHS.map(m=>m.slice(0,3))} datasets={order.map(k=>({label:STATUS_LABEL[k],backgroundColor:STATUS_COLOR[STATUS_LABEL[k]],data:MONTHS.map((_,i)=>yl.filter(l=>l.status===k&&+l.createdAt?.slice(5,7)===i+1).length)}))}/>
+            </div></div>}
+            <div className="card"><div className="ch"><span className="ct">פילוח סטטוסים</span></div><div className="cb">
+              <DonutChart height={240} data={counts} labels={order.map(k=>STATUS_LABEL[k])} colors={order.map(k=>STATUS_COLOR[STATUS_LABEL[k]])}/>
+            </div></div>
+          </div>
+          <div className="card"><div className="ch"><span className="ct">סטטוס לפי מקור</span></div><div className="cb">
+            <CrossTab leads={yl} rowKey="source" colKey="status" chart={false}/>
+          </div></div>
+        </div>;
+      })()}
+
       {tab==='סוגי אירועים'&&<div className="g2">
         <div className="card"><div className="ch"><span className="ct">לפי סוג</span></div><div className="cb"><DonutChart height={220} data={typeStats.map(t=>t.total)} labels={typeStats.map(t=>t.type)} colors={typeStats.map(t=>TYPE_CSS[t.type]||'#aaa')}/></div></div>
         <div className="card"><div className="ch"><span className="ct">ביצועים לפי סוג</span></div><div style={{overflowX:'auto'}}>
-          <table><thead><tr><th>סוג</th><th>לידים</th><th>נסגרו</th><th>המרה</th><th>הכנסות</th></tr></thead><tbody>
-            {typeStats.map(t=><tr key={t.type}><td style={{fontWeight:600}}><span className="dot" style={{background:TYPE_CSS[t.type]}}/>{t.type}</td><td>{t.total}</td><td>{t.closed}</td>
-              <td><span style={{fontWeight:700,color:t.conv>40?'var(--green)':t.conv>20?'var(--yellow)':'var(--red)'}}>{t.conv}%</span></td>
+          <table><thead><tr><th>סוג</th><th>לידים</th><th>ענו</th><th>נסגרו</th><th>המרה</th><th>הכנסות</th></tr></thead><tbody>
+            {typeStats.map(t=><tr key={t.type}><td style={{fontWeight:600}}><span className="dot" style={{background:TYPE_CSS[t.type]}}/>{t.type}</td><td>{t.total}</td><td>{t.ans}</td><td>{t.closed}</td>
+              <td>{t.ans?<span style={{fontWeight:700,color:t.conv>40?'var(--green)':t.conv>20?'var(--yellow)':'var(--red)'}}>{t.conv}%</span>:'—'}</td>
               <td style={{color:'var(--green)',fontWeight:600}}>{t.rev?`₪${t.rev.toLocaleString()}`:'—'}</td></tr>)}
           </tbody></table>
         </div></div>
@@ -1050,6 +1279,9 @@ function Analytics({leads}){
             </div>)}
           </div></div>
         </div>
+        <div className="card"><div className="ch"><span className="ct">סיבות אי-סגירה מול מקור הליד</span></div><div className="cb">
+          <CrossTab leads={yl} rowKey="reason" colKey="source"/>
+        </div></div>
         <div style={{marginTop:18}}>
           <div className="sec" style={{marginBottom:14}}>תובנות ודרכי פעולה</div>
           {reasonEntries.slice(0,5).map(([reason,count])=>{
@@ -1069,9 +1301,9 @@ function Analytics({leads}){
       {tab==='פאנל המרה'&&<div className="card"><div className="ch"><span className="ct">פאנל המרה</span></div><div className="cb">
         {[
           {l:'לידים התקבלו',n:yl.length,c:'oklch(50% .17 200)',d:'סה"כ פניות נכנסות'},
-          {l:'ענו לטלפון',n:answered.length,c:'oklch(50% .18 240)',d:`${yl.length-answered.length} לא ענו`},
+          {l:'ענו לטלפון',n:answered.length,c:'oklch(50% .18 240)',d:`${notAnswered.length} לא ענו${unmarked?` · ${unmarked} לא סומנו`:''}`},
           {l:'נשלחה הצעת מחיר',n:yl.filter(l=>l.amount>0).length,c:'oklch(60% .17 80)',d:'לידים עם סכום בשיחה'},
-          {l:'נסגרו בהצלחה',n:closed.length,c:'oklch(50% .15 145)',d:`${answered.length?Math.round(closed.length/answered.length*100):0}% מהמוענים`},
+          {l:'נסגרו בהצלחה',n:closed.length,c:'oklch(50% .15 145)',d:`${yConv}% מאלו שענו`},
         ].map(({l,n,c,d})=>(
           <div key={l} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 0',borderBottom:'1px solid var(--border)'}}>
             <div style={{minWidth:190}}>
@@ -1089,7 +1321,9 @@ function Analytics({leads}){
         <div style={{marginTop:20,background:'var(--accentbg)',borderRadius:8,padding:'14px 16px',border:'1px solid oklch(91% .05 22)'}}>
           <div style={{fontWeight:700,fontSize:13,color:'var(--accent)',marginBottom:8}}>תובנות מרכזיות</div>
           <ul style={{paddingRight:16,fontSize:13,color:'var(--text2)',lineHeight:2.1}}>
-            <li>מתוך {yl.length} לידים, <strong>{yl.length-answered.length}</strong> לא ענו — {yl.length?Math.round((yl.length-answered.length)/yl.length*100):0}% פוטנציאל אבוד</li>
+            <li>מתוך {yl.length} לידים, <strong>{notAnswered.length}</strong> לא ענו — {yl.length?Math.round(notAnswered.length/yl.length*100):0}% פוטנציאל אבוד</li>
+            {unmarked>0&&<li><strong>{unmarked}</strong> לידים עוד לא סומנו ענתה/לא ענתה — הם לא נכללים באחוזי ההמרה</li>}
+            <li>יחס המרה (מתוך לידים שענו): <strong>{yConv}%</strong> — {closed.length} נסגרו מתוך {answered.length}</li>
             {bestConvSrc&&<li>המרה גבוהה ביותר: <strong>{bestConvSrc.source}</strong> ({bestConvSrc.conv}%) — הגדיל השקעה</li>}
             <li>ממוצע עסקה: <strong>₪{closed.length?Math.round(closed.reduce((s,l)=>s+(l.amount||0),0)/closed.length).toLocaleString():0}</strong></li>
             {reasonEntries[0]&&<li>סיבה שכיחה: <strong>{reasonEntries[0][0]}</strong> ({reasonEntries[0][1]} מקרים)</li>}
@@ -1135,6 +1369,10 @@ function Tasks({tasks,setTasks,leads}){
     // category filter: only active (done tasks appear only under "הושלמו")
     return !t.done&&t.cat===filter;
   });
+  // Lead of a task, only while still in play (closed leads don't need the hot/cold mark)
+  const leadOf=t=>{const l=t.leadId?leads?.find(x=>x.id===t.leadId):null;return l&&l.status!=='closed'?l:null};
+  // Hot leads first, cold last (stable sort keeps the existing order within each group)
+  const sorted=filtered.map((t,i)=>({t,i,r:TEMP_RANK[leadOf(t)?.temp||'']})).sort((a,b)=>a.r-b.r||a.i-b.i).map(x=>x.t);
 
   return(
     <div>
@@ -1160,13 +1398,13 @@ function Tasks({tasks,setTasks,leads}){
         ))}
       </div>
       {filtered.length===0&&<div className="card" style={{padding:32,textAlign:'center',color:'var(--text3)',fontSize:13}}>אין משימות כאן</div>}
-      {filtered.map(t=>{
+      {sorted.map(t=>{
         const isOD=!t.done&&t.due&&new Date(t.due)<now;
         return <div key={t.id} className={`task-card ${t.done?'done-task':''}`}>
           <input type="checkbox" checked={t.done} onChange={()=>toggle(t.id)} style={{width:16,height:16,marginTop:2,cursor:'pointer',flexShrink:0}}/>
           <div style={{flex:1}}>
             <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-              <span style={{fontWeight:600,fontSize:13.5,textDecoration:t.done?'line-through':'none'}}>{t.title}</span>
+              <span style={{fontWeight:600,fontSize:13.5,textDecoration:t.done?'line-through':'none'}}><TempName lead={leadOf(t)}>{t.title}</TempName></span>
               <span style={{fontSize:11,fontWeight:600,color:CAT_CSS[t.cat]||'var(--text3)'}}>{t.cat}</span>
               {t.due&&<span style={{fontSize:11,color:isOD?'var(--red)':'var(--text3)',fontWeight:isOD?700:400}}>{isOD?'⚠ ':''}{fmt(t.due)}</span>}
             </div>

@@ -195,6 +195,16 @@ tr.row-click{cursor:pointer}
 .temp-pick button.on-hot{background:oklch(90% .08 22);border-color:oklch(70% .15 22);color:oklch(42% .16 22)}
 .temp-pick button.on-cold{background:oklch(92% .05 225);border-color:oklch(72% .1 225);color:oklch(42% .12 225)}
 .temp-pick button.on-none{background:var(--surface2);color:var(--text)}
+.ms{position:relative}
+.ms-btn{display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;text-align:right;white-space:nowrap;overflow:hidden}
+.ms-btn span:first-child{overflow:hidden;text-overflow:ellipsis}
+.ms-arrow{font-size:10px;color:var(--text3)}
+.ms-panel{position:absolute;top:calc(100% + 4px);right:0;min-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;z-index:50}
+.ms-opt{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap}
+.ms-opt:hover{background:var(--surface2)}
+.ms-opt input{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
+.ms-clear{width:100%;margin-top:4px;padding:6px;border:none;border-top:1px solid var(--border);background:none;font-family:'Heebo',sans-serif;font-size:12px;color:var(--accent);cursor:pointer}
+@media (max-width:768px){.fb .ms{flex:1 1 calc(50% - 4px);min-width:0}}
 </style>
 </head>
 <body>
@@ -246,6 +256,28 @@ function convStats(arr){
   return{ans,closed,conv:ans?Math.round(closed/ans*100):0};
 }
 const TEMP_RANK={hot:0,'':1,cold:2};
+// Dropdown with checkboxes; empty selection = everything
+function MultiSelect({options,selected,onChange,allLabel,width=150}){
+  const [open,setOpen]=useState(false);
+  const ref=useRef();
+  useEffect(()=>{
+    if(!open)return;
+    const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false)};
+    document.addEventListener('mousedown',h);document.addEventListener('touchstart',h);
+    return()=>{document.removeEventListener('mousedown',h);document.removeEventListener('touchstart',h)};
+  },[open]);
+  const toggle=v=>onChange(selected.includes(v)?selected.filter(x=>x!==v):[...selected,v]);
+  const summary=!selected.length?allLabel:options.filter(o=>selected.includes(o.value)).map(o=>o.label).join(', ');
+  return <div ref={ref} className="ms" style={{width}}>
+    <button type="button" className="fi ms-btn" title={summary} onClick={()=>setOpen(o=>!o)}><span>{summary}</span><span className="ms-arrow">▾</span></button>
+    {open&&<div className="ms-panel">
+      {options.map(o=><label key={o.value} className="ms-opt">
+        <input type="checkbox" checked={selected.includes(o.value)} onChange={()=>toggle(o.value)}/>{o.label}
+      </label>)}
+      {selected.length>0&&<button type="button" className="ms-clear" onClick={()=>onChange([])}>נקה בחירה</button>}
+    </div>}
+  </div>;
+}
 function TempName({lead,children}){
   const cls=lead?.temp==='hot'?'mk-hot':lead?.temp==='cold'?'mk-cold':'';
   return cls?<span className={cls}>{children}</span>:<>{children}</>;
@@ -749,7 +781,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
   const years=getYears(leads);
   const cy=now.getFullYear().toString();
   const [search,setSearch]=useState('');
-  const [fStatus,setFStatus]=useState('all');
+  const [fStatus,setFStatus]=useState([]);
   const [fSource,setFSource]=useState('all');
   const [fType,setFType]=useState('all');
   const [fYear,setFYear]=useState(cy);
@@ -868,7 +900,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
   };
 
   const filtered=leads.filter(l=>{
-    if(fStatus!=='all'&&l.status!==fStatus)return false;
+    if(fStatus.length&&!fStatus.includes(l.status))return false;
     if(fSource!=='all'&&l.source!==fSource)return false;
     if(fType!=='all'&&l.eventType!==fType)return false;
     if(fYear!=='all'&&!l.createdAt?.startsWith(fYear))return false;
@@ -946,9 +978,8 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
           <option value="all">כל החודשים</option>
           {MONTHS.map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
         </select>
-        <select className="fi" style={{width:120}} value={fStatus} onChange={e=>setFStatus(e.target.value)}>
-          <option value="all">כל הסטטוס</option><option value="closed">נסגר</option><option value="lost">לא נסגר</option><option value="follow">פולו אפ</option><option value="open">פתוח</option>
-        </select>
+        <MultiSelect width={140} allLabel="כל הסטטוסים" selected={fStatus} onChange={setFStatus}
+          options={[{value:'open',label:'פתוח'},{value:'follow',label:'פולו אפ'},{value:'closed',label:'נסגר'},{value:'lost',label:'לא נסגר'}]}/>
         <select className="fi" style={{width:140}} value={fSource} onChange={e=>setFSource(e.target.value)}>
           <option value="all">כל המקורות</option>{SOURCES.map(s=><option key={s}>{s}</option>)}
         </select>

@@ -22,8 +22,7 @@ function buildPayloads(tasks){
   if(late.length){
     const lines=late.slice(0,4).map(t=>'• '+t.title);
     if(late.length>4)lines.push(`ועוד ${late.length-4}...`);
-    out.push({title:`⚠️ ${late.length} משימות באיחור`,body:lines.join('
-'),tag:'late-'+today});
+    out.push({title:`⚠️ ${late.length} משימות באיחור`,body:lines.join('\n'),tag:'late-'+today});
   }
   return out;
 }

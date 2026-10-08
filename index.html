@@ -87,6 +87,7 @@ tr:hover td{background:var(--surface2)}
 .br{background:var(--redbg);color:var(--red)}
 .by{background:var(--yellowbg);color:#9a6d08}
 .bb{background:var(--bluebg);color:var(--blue)}
+.bp{background:oklch(96% .03 295);color:oklch(45% .15 295)}
 .bgr{background:var(--surface2);color:var(--text2)}
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:'Heebo',sans-serif;white-space:nowrap}
 .btn-p{background:var(--accent);color:#fff}.btn-p:hover{filter:brightness(1.1)}
@@ -298,6 +299,70 @@ function getYears(leads){
   return [...all].sort((a,b)=>b-a);
 }
 
+// ── NURTURE ("stay top of mind") ─────────────────────────────────
+function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function todayStr(){return ymd(new Date())}
+// uid() under another name — inside App, "uid" is the signed-in user id
+function makeId(){return uid()}
+function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000)}
+// The weekly list is frozen per week, starting Sunday
+function weekStart(today){const d=new Date(today+'T12:00:00');d.setDate(d.getDate()-d.getDay());return ymd(d)}
+// Israeli numbers → international digits for wa.me
+function waPhone(p){let d=String(p||'').replace(/\D/g,'');if(!d)return '';if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('0'))d='972'+d.slice(1);return d}
+// Android Chrome can open the phone's own contact list
+const CAN_PICK_CONTACT='contacts' in navigator&&!!navigator.contacts&&'select' in navigator.contacts;
+async function pickContact(){
+  try{const r=await navigator.contacts.select(['name','tel'],{multiple:false});return{name:r?.[0]?.name?.[0]||'',tel:r?.[0]?.tel?.[0]||''}}
+  catch{return{name:'',tel:''}}
+}
+// every = days between touches; quota = share of a 10-name weekly list
+const TRACKS={hot:{label:'🔥 חמה',every:30,quota:5},far:{label:'🌙 רחוקה',every:30,quota:3},cold:{label:'❄️ קרה',every:30,quota:2}};
+const COLD_MAX=3; // touches before asking whether to give up on a cold lead
+const NURTURE_TASK_KINDS=['how-was-it','next-year'];
+function nurtureTrack(l,today){
+  if(l.nurtureOff)return null;
+  if(l.status==='far')return 'far';
+  if(l.status==='lost'&&l.temp==='hot')return 'hot';
+  // Past clients are part of the warm circle
+  if(l.status==='closed'&&l.eventDate&&l.eventDate<today)return 'hot';
+  if((l.status==='open'||l.status==='follow')&&l.temp!=='hot'&&(l.temp==='cold'||normAnswered(l.answered)==='לא ענתה'))return 'cold';
+  return null;
+}
+function agoText(d){return d<14?`${d} ימים`:d<60?`${Math.round(d/7)} שבועות`:d<730?`${Math.round(d/30)} חודשים`:`${Math.round(d/365)} שנים`}
+function nurtureInfo(l,today){
+  const track=nurtureTrack(l,today);
+  if(!track)return null;
+  const n=(l.touches||[]).length;
+  const last=l.lastTouch||'';
+  const client=l.status==='closed';
+  const base=last||(client?l.eventDate:l.createdAt)||today;
+  const since=Math.max(0,daysBetween(base,today));
+  const hasDate=!!l.eventDate&&l.eventDate>=today;
+  const every=track==='far'&&!hasDate?60:track==='cold'&&!last?14:TRACKS[track].every;
+  let reason,hint;
+  if(track==='hot'){
+    reason=last?`לא דיברתן ${agoText(since)}`:client?`לקוחה — האירוע היה לפני ${agoText(since)}`:`חמה שלא נסגרה — פנתה לפני ${agoText(since)}`;
+    hint='הודעה אישית שלך — משהו שראית אצלה, מזל טוב, או סתם "חשבתי עלייך"';
+  }else if(track==='far'){
+    reason=(hasDate?`האירוע בעוד ${agoText(daysBetween(today,l.eventDate))}`:'מתעניינת, עדיין בלי תאריך')+(last?` · נגיעה אחרונה לפני ${agoText(since)}`:'');
+    hint=hasDate?'הסרטון האחרון + מילה אישית':'הסרטון האחרון + "כבר יש תאריך?"';
+  }else{
+    reason=n>=COLD_MAX?`${n} נגיעות בלי תגובה — להמשיך או לסגור?`:last?`נגיעה ${n+1} מתוך ${COLD_MAX} · האחרונה לפני ${agoText(since)}`:`התקררה — פנתה לפני ${agoText(since)}`;
+    hint=n?'הסרטון האחרון, בלי לשאול מה החליטה':'נגיעה קלה, בלי "אז מה החלטת?"';
+  }
+  return{track,due:since>=every,reason,hint,last,base,n};
+}
+function pickNurtureBatch(leads,today,exclude=new Set(),size=10){
+  const pools={hot:[],far:[],cold:[]};
+  leads.forEach(l=>{if(exclude.has(l.id))return;const i=nurtureInfo(l,today);if(i&&i.due)pools[i.track].push({l,i})});
+  // Leads already in touch come first (longest wait first), then new ones, most recent first
+  Object.values(pools).forEach(p=>p.sort((a,b)=>(!!b.i.last-!!a.i.last)||(a.i.last?a.i.last.localeCompare(b.i.last):b.i.base.localeCompare(a.i.base))));
+  const out=[];
+  Object.keys(pools).forEach(t=>out.push(...pools[t].splice(0,Math.round(TRACKS[t].quota*size/10))));
+  Object.keys(pools).forEach(t=>{while(out.length<size&&pools[t].length)out.push(pools[t].shift())});
+  return out.map(x=>x.l.id);
+}
+
 // ── SVG ICONS ────────────────────────────────────────────────────
 const Icons={
   dashboard:()=><svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>,
@@ -305,6 +370,7 @@ const Icons={
   events:()=><svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>,
   analytics:()=><svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 13l4-5 3 3 4-6 3 3"/></svg>,
   tasks:()=><svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 4h8M6 8h8M6 12h8"/><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/></svg>,
+  nurture:()=><svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 13.5S2 10 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6 7.5-6 7.5z"/></svg>,
 };
 
 // ── CHARTS ───────────────────────────────────────────────────────
@@ -348,7 +414,7 @@ function DonutChart({data,labels,colors,height=190}){
 
 // ── SMALL COMPONENTS ─────────────────────────────────────────────
 function SBadge({status}){
-  const m={closed:['bg','נסגר'],lost:['br','לא נסגר'],follow:['by','פולו אפ'],open:['bb','פתוח']};
+  const m={closed:['bg','נסגר'],lost:['br','לא נסגר'],follow:['by','פולו אפ'],open:['bb','פתוח'],far:['bp','רחוק']};
   const [c,l]=m[status]||['bgr',status];
   return <span className={`badge ${c}`}>{l}</span>;
 }
@@ -395,7 +461,7 @@ function ReminderBanner({leads}){
 // ── LEAD FORM (unified with event fields) ────────────────────────
 function LeadFormModal({lead,onSave,onClose}){
   const blank={name:'',source:'קמפיין מטא',answered:'',temp:'',eventType:'רווקות',status:'open',lostReason:'',
-    amount:0,advance:0,advanceDone:false,eventDate:'',location:'',notes:'',followDate:'',weddingDate:'',
+    amount:0,advance:0,advanceDone:false,eventDate:'',location:'',notes:'',followDate:'',weddingDate:'',phone:'',instagram:'',
     createdAt:new Date().toISOString().split('T')[0],brideName:'',guideName:''};
   const [f,setF]=useState(()=>lead?{...lead,answered:normAnswered(lead.answered),temp:lead.temp||''}:blank);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -415,7 +481,7 @@ function LeadFormModal({lead,onSave,onClose}){
               <div className="fg"><label className="fl">סוג אירוע</label><select className="fi" value={f.eventType} onChange={e=>s('eventType',e.target.value)}>{EVENT_TYPES.map(x=><option key={x}>{x}</option>)}</select></div>
               <div className="fg"><label className="fl">סטטוס</label>
                 <select className="fi" value={f.status} onChange={e=>{const v=e.target.value;setF(p=>({...p,status:v,followDate:v==='follow'&&!p.followDate?addDays(new Date(),2):p.followDate}))}}>
-                  <option value="open">פתוח</option><option value="follow">פולו אפ</option>
+                  <option value="open">פתוח</option><option value="follow">פולו אפ</option><option value="far">רחוק / בהמתנה</option>
                   <option value="closed">נסגר</option><option value="lost">לא נסגר</option>
                 </select>
               </div>
@@ -432,6 +498,13 @@ function LeadFormModal({lead,onSave,onClose}){
                   <button type="button" className={!f.temp?'on-none':''} onClick={()=>s('temp','')}>ללא</button>
                 </div>
               </div>
+              <div className="fg"><label className="fl">טלפון</label>
+                <div style={{display:'flex',gap:6}}>
+                  <input type="tel" dir="ltr" className="fi" style={{flex:1,minWidth:0}} value={f.phone||''} onChange={e=>s('phone',e.target.value)} placeholder="050-0000000"/>
+                  {CAN_PICK_CONTACT&&<button type="button" className="btn btn-s btn-sm" style={{whiteSpace:'nowrap'}} onClick={async()=>{const c=await pickContact();if(c.tel)setF(p=>({...p,phone:c.tel,name:p.name||c.name}))}}>📇 מאנשי קשר</button>}
+                </div>
+              </div>
+              <div className="fg"><label className="fl">אינסטגרם</label><input dir="ltr" className="fi" value={f.instagram||''} onChange={e=>s('instagram',e.target.value)} placeholder="@username"/></div>
             </div>
             {f.status==='lost'&&<div className="fg" style={{background:'var(--redbg)',border:'1px solid oklch(91% .05 20)',borderRadius:8,padding:'12px 14px',marginTop:4}}>
               <label className="fl" style={{color:'var(--red)',fontWeight:700}}>למה לא נסגר? *</label>
@@ -508,6 +581,7 @@ function LeadDetailModal({lead,onEdit,onClose}){
     ['סיווג',lead.temp==='hot'?<span className="mk-hot">🔥 חם</span>:lead.temp==='cold'?<span className="mk-cold">❄️ קר</span>:'—'],
     ['ענתה/לא ענתה',ans||'לא סומן'],
     ['תאריך פניה',fmt(lead.createdAt)],
+    ['טלפון',lead.phone?<span dir="ltr">{lead.phone}</span>:'—'],
     ['מקור',<SourceDot source={lead.source}/>],
     ['סוג אירוע',lead.eventType],
     ['שם הכלה / מוזמן',lead.brideName||'—'],
@@ -766,6 +840,11 @@ function extractLeadNameFromTitle(t){
 // True if a task should stay (lead status still matches the task kind)
 function isTaskStillValid(t,leadById,leadsArr){
   if(t.done)return true;
+  // Dated touchpoints for hot leads that didn't close
+  if(t.leadId&&NURTURE_TASK_KINDS.includes(t.kind)){
+    const lead=leadById.get(t.leadId);
+    return !!lead&&lead.status==='lost'&&lead.temp==='hot'&&lead.eventDate===t.forDate&&!lead.nurtureOff;
+  }
   // Modern tasks with leadId
   if(t.leadId&&AUTO_TASK_KINDS.includes(t.kind)){
     const lead=leadById.get(t.leadId);
@@ -846,6 +925,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
     if(s==='נסגר'||(s.includes('נסגר')&&!s.includes('לא')))return 'closed';
     if(s.includes('לא נסגר')||s==='לא'||s==='לא נסגרה')return 'lost';
     if(s.includes('פולו'))return 'follow';
+    if(s.includes('רחוק')||s.includes('המתנה'))return 'far';
     if(s.includes('פתוח'))return 'open';
     return 'open';
   };
@@ -1001,7 +1081,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
           {MONTHS.map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
         </select>
         <MultiSelect width={140} allLabel="כל הסטטוסים" selected={fStatus} onChange={setFStatus}
-          options={[{value:'open',label:'פתוח'},{value:'follow',label:'פולו אפ'},{value:'closed',label:'נסגר'},{value:'lost',label:'לא נסגר'}]}/>
+          options={[{value:'open',label:'פתוח'},{value:'follow',label:'פולו אפ'},{value:'far',label:'רחוק'},{value:'closed',label:'נסגר'},{value:'lost',label:'לא נסגר'}]}/>
         <select className="fi" style={{width:140}} value={fSource} onChange={e=>setFSource(e.target.value)}>
           <option value="all">כל המקורות</option>{SOURCES.map(s=><option key={s}>{s}</option>)}
         </select>
@@ -1133,15 +1213,15 @@ function EventsPage({leads,onEdit}){
 
 // ── ANALYTICS PAGE ───────────────────────────────────────────────
 // ── CROSS-TAB COMPARISON ─────────────────────────────────────────
-const STATUS_LABEL={open:'פתוח',follow:'פולו אפ',closed:'נסגר',lost:'לא נסגר'};
-const STATUS_COLOR={'פתוח':'oklch(55% .15 240)','פולו אפ':'oklch(68% .15 80)','נסגר':'oklch(52% .15 145)','לא נסגר':'oklch(55% .18 20)'};
+const STATUS_LABEL={open:'פתוח',follow:'פולו אפ',far:'רחוק',closed:'נסגר',lost:'לא נסגר'};
+const STATUS_COLOR={'פתוח':'oklch(55% .15 240)','פולו אפ':'oklch(68% .15 80)','רחוק':'oklch(55% .15 295)','נסגר':'oklch(52% .15 145)','לא נסגר':'oklch(55% .18 20)'};
 const PALETTE=['oklch(55% .17 240)','oklch(55% .19 22)','oklch(55% .15 145)','oklch(65% .16 80)','oklch(55% .2 330)','oklch(55% .14 190)','oklch(50% .14 290)','oklch(62% .15 50)','oklch(55% .04 0)'];
 function answeredLabel(l){return isAnswered(l)?'ענתה':normAnswered(l.answered)==='לא ענתה'?'לא ענתה':'לא סומן'}
 // Each dimension: how to read a lead's value (null = lead not relevant), display order and colors
 const DIMS={
   source:{label:'מקור',get:l=>l.source||'אחר',order:SOURCES,color:v=>SRC_HEX[v]},
   answered:{label:'ענתה / לא ענתה',get:answeredLabel,order:['ענתה','לא ענתה','לא סומן'],color:v=>({'ענתה':'oklch(52% .15 145)','לא ענתה':'oklch(55% .18 20)','לא סומן':'oklch(75% .02 60)'})[v]},
-  status:{label:'סטטוס',get:l=>STATUS_LABEL[l.status]||l.status,order:['פתוח','פולו אפ','נסגר','לא נסגר'],color:v=>STATUS_COLOR[v]},
+  status:{label:'סטטוס',get:l=>STATUS_LABEL[l.status]||l.status,order:['פתוח','פולו אפ','רחוק','נסגר','לא נסגר'],color:v=>STATUS_COLOR[v]},
   reason:{label:'סיבת אי-סגירה',get:l=>l.status==='lost'?(l.lostReason||'לא צוינה'):null,order:[...LOST_REASONS,'לא צוינה'],note:'רק לידים בסטטוס "לא נסגר"'},
   temp:{label:'חם / קר',get:l=>l.temp==='hot'?'חם':l.temp==='cold'?'קר':'ללא סיווג',order:['חם','קר','ללא סיווג'],color:v=>({'חם':'oklch(62% .17 22)','קר':'oklch(70% .11 225)','ללא סיווג':'oklch(78% .02 60)'})[v]},
   eventType:{label:'סוג אירוע',get:l=>l.eventType||'אחר',order:EVENT_TYPES,color:v=>TYPE_CSS[v]},
@@ -1285,7 +1365,7 @@ function Analytics({leads}){
       {tab==='השוואה'&&<CompareTab leads={yl}/>}
 
       {tab==='סטטוסים'&&(()=>{
-        const order=['open','follow','closed','lost'];
+        const order=['open','follow','far','closed','lost'];
         const counts=order.map(k=>yl.filter(l=>l.status===k).length);
         const showMonthly=month==='all'&&year!=='הכל';
         return <div>
@@ -1564,6 +1644,113 @@ function LoginScreen({error}){
   );
 }
 
+// ── NURTURE PAGE ─────────────────────────────────────────────────
+const MSG_DEFAULTS={
+  msgFar:'היי {שם} 😊 חשבתי עלייך! תראי מה העליתי לאחרונה 👇\n{סרטון}',
+  msgCold:'היי {שם} 😊 מקווה שהכול טוב אצלך! משאירה לך פה משהו קטן שיעשה לך חיוך 👇\n{סרטון}',
+};
+function PhoneAdder({onSave}){
+  const [v,setV]=useState('');
+  return <div style={{display:'flex',gap:6,marginTop:10,flexWrap:'wrap'}}>
+    <input className="fi" type="tel" dir="ltr" style={{flex:'1 1 130px',minWidth:0}} placeholder="אין טלפון — הוסיפי" value={v} onChange={e=>setV(e.target.value)}/>
+    {CAN_PICK_CONTACT&&<button className="btn btn-s btn-sm" onClick={async()=>{const c=await pickContact();if(c.tel)onSave(c.tel)}}>📇 מאנשי קשר</button>}
+    <button className="btn btn-p btn-sm" disabled={!waPhone(v)} onClick={()=>onSave(v)}>שמור</button>
+  </div>;
+}
+function NurturePage({leads,setLeads,batch,setBatch,tweaks,setTweaks}){
+  const today=todayStr();
+  const upd=(id,fn)=>setLeads(p=>p.map(l=>l.id===id?fn(l):l));
+  const touch=l=>upd(l.id,x=>({...x,lastTouch:today,touches:[...(x.touches||[]),today]}));
+  const undo=l=>upd(l.id,x=>{const t=(x.touches||[]).slice(0,-1);return{...x,touches:t,lastTouch:t[t.length-1]||''}});
+  const skip=id=>setBatch(b=>({...b,skipped:[...(b.skipped||[]),id]}));
+  const unskip=id=>setBatch(b=>({...b,skipped:(b.skipped||[]).filter(x=>x!==id)}));
+  const stop=l=>{if(confirm(`להפסיק לפנות אל ${l.name}?`))upd(l.id,x=>({...x,nurtureOff:true}))};
+  const toLost=l=>upd(l.id,x=>({...x,status:'lost',lostReason:x.lostReason||'חוסר מענה'}));
+  const more=()=>setBatch(b=>({...b,ids:[...b.ids,...pickNurtureBatch(leads,today,new Set(b.ids),5)]}));
+  const tw=(k,v)=>setTweaks(p=>({...p,[k]:v}));
+  const msgFor=(l,track)=>{
+    const first=(l.name||'').trim().split(/\s+/)[0]||'';
+    // Hot leads get a personal message — only the greeting is prefilled
+    if(track==='hot')return `היי ${first} 💛 `;
+    const k=track==='far'?'msgFar':'msgCold';
+    return (tweaks[k]??MSG_DEFAULTS[k]).replace(/\{שם\}/g,first).replace(/\{סרטון\}/g,tweaks.reelUrl||'').trim();
+  };
+  const igUrl=h=>/^https?:/i.test(h)?h:`https://instagram.com/${h.replace(/^@/,'').trim()}`;
+
+  const rows=(batch?.ids||[]).map(id=>leads.find(l=>l.id===id)).filter(Boolean).map(l=>({
+    l,info:nurtureInfo(l,today),
+    sent:!!l.lastTouch&&l.lastTouch>=batch.week,
+    skipped:(batch.skipped||[]).includes(l.id),
+  // A lead that left its track (closed, lost, stopped) drops off the list
+  })).filter(r=>r.info||r.sent).sort((a,b)=>(a.sent-b.sent)||(a.skipped-b.skipped));
+  const pending=rows.filter(r=>!r.sent&&!r.skipped).length;
+  const sentN=rows.filter(r=>r.sent).length;
+  const totals={hot:0,far:0,cold:0};
+  let waiting=0;
+  const inBatch=new Set(batch?.ids||[]);
+  leads.forEach(l=>{const i=nurtureInfo(l,today);if(!i)return;totals[i.track]++;if(i.due&&!inBatch.has(l.id))waiting++});
+
+  return(
+    <div>
+      <div className="ph">
+        <div><div className="pt">נטוורקינג</div><div className="ps">הרשימה של השבוע · {pending} ממתינות{sentN?` · ${sentN} נשלחו`:''}</div></div>
+      </div>
+      <div className="card" style={{padding:'12px 16px',marginBottom:14}}>
+        <label className="fl">הסרטון האחרון שלך (לינק מאינסטגרם)</label>
+        <input className="fi" dir="ltr" value={tweaks.reelUrl||''} onChange={e=>tw('reelUrl',e.target.value)} placeholder="https://www.instagram.com/reel/..."/>
+        {!tweaks.reelUrl&&<div style={{fontSize:11,color:'var(--text3)',marginTop:6}}>בלי לינק, ההודעות לרחוקות ולקרות ייפתחו בלי סרטון</div>}
+        <details style={{marginTop:10}}>
+          <summary style={{fontSize:12,color:'var(--text2)',cursor:'pointer'}}>נוסח ההודעות</summary>
+          <div style={{fontSize:11,color:'var(--text3)',margin:'8px 0'}}>{'{שם}'} יוחלף בשם הפרטי, {'{סרטון}'} בלינק שלמעלה. לחמות אין נוסח — את כותבת בעצמך.</div>
+          <label className="fl">🌙 רחוקות</label>
+          <textarea className="fi" rows={3} style={{marginBottom:8}} value={tweaks.msgFar??MSG_DEFAULTS.msgFar} onChange={e=>tw('msgFar',e.target.value)}/>
+          <label className="fl">❄️ קרות</label>
+          <textarea className="fi" rows={3} value={tweaks.msgCold??MSG_DEFAULTS.msgCold} onChange={e=>tw('msgCold',e.target.value)}/>
+        </details>
+      </div>
+
+      {rows.length===0&&<div className="card" style={{padding:24,textAlign:'center',color:'var(--text2)',fontSize:13,lineHeight:1.7}}>
+        אין אף אחת ברשימה השבוע.<br/>לידים נכנסים לכאן לבד: "לא נסגר" + חם, לקוחות עבר, סטטוס "רחוק", ולידים קרים או שלא ענו.
+      </div>}
+
+      {rows.map(({l,info,sent,skipped})=>{
+        const phone=waPhone(l.phone);
+        return <div key={l.id} className="card" style={{padding:'14px 16px',marginBottom:10,opacity:sent||skipped?.55:1}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <span style={{fontWeight:700,fontSize:15}}>{l.name}</span>
+            {info&&<span className="badge bgr">{TRACKS[info.track].label}</span>}
+            {l.status==='closed'&&<span className="badge bg">לקוחה</span>}
+            {sent&&<span className="badge bg">✓ נשלח</span>}
+            {skipped&&!sent&&<span className="badge bgr">דילגת השבוע</span>}
+          </div>
+          {info&&!sent&&!skipped&&<>
+            <div style={{fontSize:13,marginTop:6}}>{info.reason}</div>
+            <div style={{fontSize:12,color:'var(--text2)',marginTop:3}}>💡 {info.hint}</div>
+            {!phone&&<PhoneAdder onSave={v=>upd(l.id,x=>({...x,phone:v}))}/>}
+          </>}
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:12}}>
+            {sent&&<button className="btn btn-s btn-sm" onClick={()=>undo(l)}>↩ ביטול</button>}
+            {skipped&&!sent&&<button className="btn btn-s btn-sm" onClick={()=>unskip(l.id)}>↩ החזירי לרשימה</button>}
+            {info&&!sent&&!skipped&&<>
+              {phone&&<a className="btn btn-sm" style={{background:'#25D366',color:'#fff',textDecoration:'none'}} href={`https://wa.me/${phone}?text=${encodeURIComponent(msgFor(l,info.track))}`} target="_blank" rel="noopener" onClick={()=>touch(l)}>וואטסאפ</a>}
+              {l.instagram&&<a className="btn btn-s btn-sm" style={{textDecoration:'none'}} href={igUrl(l.instagram)} target="_blank" rel="noopener">אינסטגרם</a>}
+              <button className="btn btn-s btn-sm" onClick={()=>touch(l)}>✓ נשלח</button>
+              <button className="btn btn-s btn-sm" onClick={()=>skip(l.id)}>דלגי השבוע</button>
+              {info.track==='cold'&&info.n>=COLD_MAX&&<button className="btn btn-s btn-sm" style={{color:'var(--red)'}} onClick={()=>toLost(l)}>להעביר ל"לא נסגר"</button>}
+              <button className="btn btn-g btn-sm" style={{color:'var(--text3)'}} onClick={()=>stop(l)}>להפסיק</button>
+            </>}
+          </div>
+        </div>;
+      })}
+
+      <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginTop:16,fontSize:12,color:'var(--text2)'}}>
+        <span>בסך הכול במסלולים: 🔥 {totals.hot} · 🌙 {totals.far} · ❄️ {totals.cold}</span>
+        {waiting>0&&<button className="btn btn-s btn-sm" onClick={more}>+ עוד 5 ({waiting} מחכות)</button>}
+      </div>
+    </div>
+  );
+}
+
 // ── APP INSTALL + PUSH NOTIFICATIONS ─────────────────────────────
 const VAPID_PUBLIC_KEY='BLBYGI3VXO-_kgb5UaNUjrR5eZdojuC55wMH4ZbUkfG6mv9OXGRvYned7WtrHIqSyl9wfxqprrMjvV46K9e6--w';
 const PUSH_SUPPORTED='serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
@@ -1649,7 +1836,8 @@ function App(){
 
   // Synced state (Firestore if logged in, else localStorage)
   const [leads,setLeads,leadsLoaded]=useSyncedState(uid,'leads',typeof REAL_LEADS!=='undefined'?REAL_LEADS:[],'biz_leads3');
-  const [tasks,setTasks]=useSyncedState(uid,'tasks',[],'biz_tasks');
+  const [tasks,setTasks,tasksLoaded]=useSyncedState(uid,'tasks',[],'biz_tasks');
+  const [nurture,setNurture,nurtureLoaded]=useSyncedState(uid,'nurture',{week:'',ids:[],skipped:[]},'biz_nurture');
   const [tweaks,setTweaks]=useSyncedState(uid,'tweaks',TWEAK_DEFAULTS,'biz_tweaks');
 
   const [page,setPage]=useState(()=>new URLSearchParams(location.search).get('page')||localStorage.getItem('biz_page')||'dashboard');
@@ -1686,6 +1874,49 @@ function App(){
     }
   },[leads,tasks]);
 
+  // Stay-in-touch automation: wake far leads 3 months before their date,
+  // and plan dated touchpoints for hot leads that didn't close
+  useEffect(()=>{
+    if(!leadsLoaded||!tasksLoaded||!leads.length)return;
+    const today=todayStr();
+    const newTasks=[];
+    let dirty=false;
+    const next=leads.map(l=>{
+      if(l.status==='far'&&l.eventDate&&l.eventDate>=today&&daysBetween(today,l.eventDate)<=90){
+        dirty=true;
+        newTasks.push({id:makeId(),leadId:l.id,kind:'follow',title:`פולו אפ — ${l.name}`,cat:'פולו אפ',due:today,notes:'האירוע בעוד פחות מ-3 חודשים — עכשיו הזמן לסגור',done:false});
+        return{...l,status:'follow',followDate:today};
+      }
+      if(l.status==='lost'&&l.temp==='hot'&&l.eventDate&&!l.nurtureOff){
+        const made=l.nurtureMade||[];
+        const nextYear=(+l.eventDate.slice(0,4)+1)+l.eventDate.slice(4);
+        const plan=[
+          ['how-was-it',addDays(new Date(l.eventDate),1),`איך היה? — ${l.name}`,'האירוע שלה היה אתמול — שאלי איך היה'],
+          ['next-year',addDays(new Date(nextYear),-60),`שנה אחרי — ${l.name}`,'בשנה שעברה היית תפוסה בתאריך שלה — הציעי לשמור לה את השנה'],
+        ];
+        const added=[];
+        plan.forEach(([kind,due,title,notes])=>{
+          const key=kind+':'+l.eventDate;
+          if(made.includes(key)||due<today)return;
+          added.push(key);
+          newTasks.push({id:makeId(),leadId:l.id,kind,forDate:l.eventDate,title,cat:'שיווק',due,notes,done:false});
+        });
+        if(added.length){dirty=true;return{...l,nurtureMade:[...made,...added]}}
+      }
+      return l;
+    });
+    if(dirty){setLeads(next);setTasks(p=>[...newTasks,...p]);}
+  },[leads,leadsLoaded,tasksLoaded]);
+
+  // Build this week's networking list once per week
+  useEffect(()=>{
+    if(!leadsLoaded||!nurtureLoaded||!leads.length)return;
+    const today=todayStr();
+    const week=weekStart(today);
+    if(nurture?.week===week)return;
+    setNurture({week,ids:pickNurtureBatch(leads,today),skipped:[]});
+  },[leads,leadsLoaded,nurtureLoaded,nurture?.week]);
+
   useEffect(()=>{
     if(tweaks?.accentHue){
       document.documentElement.style.setProperty('--accent',`oklch(50% .19 ${tweaks.accentHue})`);
@@ -1719,6 +1950,7 @@ function App(){
     {id:'events',l:'אירועים',Icon:Icons.events},
     {id:'analytics',l:'ניתוח המרות',Icon:Icons.analytics},
     {id:'tasks',l:'משימות',Icon:Icons.tasks},
+    {id:'nurture',l:'נטוורקינג',Icon:Icons.nurture},
   ];
 
   return(
@@ -1768,6 +2000,7 @@ function App(){
         {page==='events'&&<EventsPage leads={leads} onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}/>}
         {page==='analytics'&&<Analytics leads={leads}/>}
         {page==='tasks'&&<Tasks tasks={tasks} setTasks={setTasks} leads={leads}/>}
+        {page==='nurture'&&<NurturePage leads={leads} setLeads={setLeads} batch={nurture} setBatch={setNurture} tweaks={tweaks} setTweaks={setTweaks}/>}
       </main>
       {showTweaks&&<div className="tweaks-panel">
         <div style={{fontWeight:700,marginBottom:12,fontSize:13}}>Tweaks</div>

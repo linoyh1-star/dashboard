@@ -11,6 +11,8 @@ const MODE=process.env.MODE||'scheduled'; // scheduled | now | test
 const il=(opts)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem',...opts}).format(new Date());
 const today=il({year:'numeric',month:'2-digit',day:'2-digit'}); // YYYY-MM-DD
 const hour=parseInt(il({hour:'2-digit',hour12:false}),10)%24;
+const weekday=il({weekday:'short'}); // Sun, Mon, ...
+const NURTURE_DAY='Sun';
 
 // One notification per task due today, plus a single reminder for everything overdue
 function buildPayloads(tasks){
@@ -19,6 +21,8 @@ function buildPayloads(tasks){
   const due=open.filter(t=>t.due.slice(0,10)===today);
   const late=open.filter(t=>t.due.slice(0,10)<today);
   const out=due.map(t=>({title:t.title,body:t.notes||'',tag:'task-'+t.id}));
+  // The weekly networking list is built in the app; this just calls her to it
+  if(weekday===NURTURE_DAY)out.push({title:'🤝 נטוורקינג שבועי',body:'הרשימה של השבוע מוכנה — כמה דקות ואת אחרי זה',tag:'nurture-'+today,page:'nurture'});
   if(late.length){
     const lines=late.slice(0,4).map(t=>'• '+t.title);
     if(late.length>4)lines.push(`ועוד ${late.length-4}...`);

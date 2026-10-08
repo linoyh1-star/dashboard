@@ -219,6 +219,8 @@ const EVENT_TYPES=['רווקות','יומולדת','הרמת כוסית','קבו
 const SRC_HEX={'פייסבוק אורגני':'#3b5998','אינסטגרם אורגני':'#c13584','מפה לאוזן':'#2d8a5e','קמפיין מטא':'#c85c3a','אתר שלי':'#2d7fa8','אפיליאייט':'#7a5bb5','אחר':'#888'};
 const SRC_CSS={'פייסבוק אורגני':'oklch(50% .19 240)','אינסטגרם אורגני':'oklch(52% .2 330)','מפה לאוזן':'oklch(50% .15 145)','קמפיין מטא':'oklch(50% .19 22)','אתר שלי':'oklch(50% .17 200)','אפיליאייט':'oklch(50% .15 295)','אחר':'oklch(55% .04 0)'};
 const TYPE_CSS={'רווקות':'oklch(52% .2 330)','יומולדת':'oklch(60% .17 80)','הרמת כוסית':'oklch(50% .15 145)','קבוצה מאורגנת':'oklch(50% .17 200)','מקווה':'oklch(50% .19 240)','אירוע חברה':'oklch(50% .19 22)','יום גיבוש':'oklch(55% .14 160)','הפרשת חלה':'oklch(55% .15 60)','אחר':'oklch(55% .04 0)'};
+// Event types that come with a wedding — we also track the wedding date for these
+const WEDDING_TYPES=['רווקות','מקווה','הפרשת חלה'];
 const TASK_CATS=['פולו אפ','אירוע קרוב','הצעת מחיר','שיווק','כללי'];
 const LOST_REASONS=['חוסר מענה','הקונספט לא התאים','תאריכים חופפים','מחיר','אני לא רציתי','אני לא יכולתי'];
 const CAT_CSS={'פולו אפ':'var(--blue)','אירוע קרוב':'var(--green)','הצעת מחיר':'var(--accent)','שיווק':'oklch(52% .2 330)','כללי':'var(--text2)'};
@@ -393,7 +395,7 @@ function ReminderBanner({leads}){
 // ── LEAD FORM (unified with event fields) ────────────────────────
 function LeadFormModal({lead,onSave,onClose}){
   const blank={name:'',source:'קמפיין מטא',answered:'',temp:'',eventType:'רווקות',status:'open',lostReason:'',
-    amount:0,advance:0,advanceDone:false,eventDate:'',location:'',notes:'',followDate:'',
+    amount:0,advance:0,advanceDone:false,eventDate:'',location:'',notes:'',followDate:'',weddingDate:'',
     createdAt:new Date().toISOString().split('T')[0],brideName:'',guideName:''};
   const [f,setF]=useState(()=>lead?{...lead,answered:normAnswered(lead.answered),temp:lead.temp||''}:blank);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -470,6 +472,7 @@ function LeadFormModal({lead,onSave,onClose}){
                 <div className="fg"><label className="fl">שם בעל האירוע</label><input className="fi" value={f.brideName||''} onChange={e=>s('brideName',e.target.value)} placeholder="שם בעל האירוע"/></div>
                 <div className="fg"><label className="fl">תאריך האירוע</label><input type="date" className="fi" value={f.eventDate} onChange={e=>s('eventDate',e.target.value)}/></div>
                 <div className="fg"><label className="fl">מקום בארץ</label><input className="fi" value={f.location} onChange={e=>s('location',e.target.value)} placeholder="עיר / אזור..."/></div>
+                {WEDDING_TYPES.includes(f.eventType)&&<div className="fg"><label className="fl">תאריך החתונה</label><input type="date" className="fi" value={f.weddingDate||''} onChange={e=>s('weddingDate',e.target.value)}/></div>}
               </div>
               <div className="sec" style={{marginTop:2}}>תשלומים</div>
               <div className="fg3">
@@ -544,7 +547,7 @@ function EventDetailModal({lead,onEdit,onClose}){
       <div className="modal" style={{maxWidth:500}}>
         <div className="mh"><span className="mt">{lead.name}</span><button className="xbtn" onClick={onClose}>×</button></div>
         <div className="mb">
-          {[['בעל האירוע',lead.brideName||lead.name],['איש הקשר',lead.guideName||'—'],['סוג אירוע',lead.eventType],['תאריך',d?fmtFull(lead.eventDate):'—'],['מקום בארץ',lead.location||'—'],['מקור',lead.source]].map(([k,v])=>(
+          {[['בעל האירוע',lead.brideName||lead.name],['איש הקשר',lead.guideName||'—'],['סוג אירוע',lead.eventType],['תאריך',d?fmtFull(lead.eventDate):'—'],['מקום בארץ',lead.location||'—'],['מקור',lead.source],...(lead.weddingDate?[['תאריך החתונה',fmtFull(lead.weddingDate)]]:[])].map(([k,v])=>(
             <div key={k} style={{display:'flex',gap:10,padding:'9px 0',borderBottom:'1px solid var(--border)',alignItems:'baseline'}}>
               <span style={{fontWeight:600,fontSize:13,color:'var(--text2)',minWidth:110}}>{k}</span>
               <span style={{fontSize:13}}>{v}</span>
@@ -743,7 +746,7 @@ function Dashboard({leads}){
 }
 
 // ── AUTO TASKS ───────────────────────────────────────────────────
-const AUTO_TASK_KINDS=['follow','questionnaire-send','questionnaire-verify','receipt'];
+const AUTO_TASK_KINDS=['follow','questionnaire-send','questionnaire-verify','receipt','bride-message'];
 const EVENT_TASK_KINDS=['questionnaire-send','questionnaire-verify','receipt'];
 // Legacy title prefixes (for tasks created before leadId was added)
 const TASK_TITLE_PREFIXES={
@@ -768,6 +771,8 @@ function isTaskStillValid(t,leadById,leadsArr){
     const lead=leadById.get(t.leadId);
     if(!lead)return false;
     if(t.kind==='follow')return lead.status==='follow';
+    if(t.kind==='questionnaire-send')return lead.status==='closed'&&!!lead.eventDate&&lead.eventType==='רווקות';
+    if(t.kind==='bride-message')return lead.status==='closed'&&!!lead.weddingDate&&WEDDING_TYPES.includes(lead.eventType);
     if(EVENT_TASK_KINDS.includes(t.kind))return lead.status==='closed'&&!!lead.eventDate;
     return true;
   }
@@ -923,28 +928,36 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
     const prev=editL;
     if(editL)onEdit(lead);else onAdd(lead);
 
-    const statusChanged=!prev||prev.status!==lead.status;
-    const eventDateChanged=!prev||prev.eventDate!==lead.eventDate;
-    const followDateChanged=!prev||(prev.followDate||'')!==(lead.followDate||'');
+    const changed=k=>!prev||(prev[k]||'')!==(lead[k]||'');
 
-    // Sync auto-tasks only when status, eventDate or followDate changed
-    if(statusChanged||(lead.status==='closed'&&eventDateChanged)||(lead.status==='follow'&&followDateChanged)){
+    // Sync auto-tasks only when something they depend on changed
+    if(changed('status')||(lead.status==='closed'&&(changed('eventDate')||changed('weddingDate')||changed('eventType')))||(lead.status==='follow'&&changed('followDate'))){
+      const who=lead.brideName||lead.name;
       const newTasks=[];
+      const add=(kind,title,cat,due,notes)=>newTasks.push({id:uid(),leadId:lead.id,kind,title,cat,due,notes,done:false});
 
       // Follow-up: single task on the chosen date (+2 days if none). Auto-renews when marked done (handled in Tasks component)
       if(lead.status==='follow'){
-        newTasks.push({id:uid(),leadId:lead.id,kind:'follow',title:`פולו אפ — ${lead.name}`,cat:'פולו אפ',due:lead.followDate||addDays(new Date(),2),notes:'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס',done:false});
+        add('follow',`פולו אפ — ${lead.name}`,'פולו אפ',lead.followDate||addDays(new Date(),2),'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס');
       }
-      // Event: 3 reminders (only if closed with a date)
-      else if(lead.status==='closed'&&lead.eventDate){
-        newTasks.push({id:uid(),leadId:lead.id,kind:'questionnaire-send',title:`שאלון לחתן — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),-7),notes:'שלחי שאלון לחתן ובקשי מילוי פרטים לפני האירוע',done:false});
-        newTasks.push({id:uid(),leadId:lead.id,kind:'questionnaire-verify',title:`וידוא שאלונים — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),-1),notes:'ודאי שכל השאלונים מולאו ויש לך את כל המידע לאירוע',done:false});
-        newTasks.push({id:uid(),leadId:lead.id,kind:'receipt',title:`שליחת קבלה — ${lead.brideName||lead.name}`,cat:'אירוע קרוב',due:addDays(new Date(lead.eventDate),1),notes:'שלחי קבלה ללקוחה לאחר האירוע',done:false});
+      else if(lead.status==='closed'){
+        if(lead.eventDate){
+          // Groom questionnaire is only relevant for bachelorette parties
+          if(lead.eventType==='רווקות')add('questionnaire-send',`שאלון לחתן — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),-7),'שלחי שאלון לחתן ובקשי מילוי פרטים לפני האירוע');
+          add('questionnaire-verify',`שאלון הכנה לאירוע — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),-2),'ודאי שכל השאלונים מולאו ויש לך את כל המידע לאירוע');
+          add('receipt',`שליחת קבלה — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),1),'שלחי קבלה ללקוחה לאחר האירוע');
+        }
+        if(WEDDING_TYPES.includes(lead.eventType)&&lead.weddingDate){
+          add('bride-message',`הודעה לכלה — ${who}`,'שיווק',addDays(new Date(lead.weddingDate),2),'יומיים אחרי החתונה — שלחי לכלה מזל טוב ושאלי איך היה');
+        }
       }
       // For 'open' and 'lost' — no new tasks (cleanup only)
 
       // Atomic update: remove obsolete auto-tasks for this lead + add new ones
       setTasks(p=>{
+        // A step that was already done isn't re-created unless its date moved
+        const doneKinds=new Set(p.filter(t=>t.done&&t.leadId===lead.id).map(t=>t.kind));
+        const fresh=newTasks.filter(t=>t.kind==='follow'||!doneKinds.has(t.kind)||changed(t.kind==='bride-message'?'weddingDate':'eventDate'));
         const cleaned=p.filter(t=>{
           if(t.done)return true;
           // Match by leadId (modern tasks)
@@ -956,7 +969,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
           }
           return true;
         });
-        return[...newTasks,...cleaned];
+        return[...fresh,...cleaned];
       });
     }
 
@@ -1658,8 +1671,17 @@ function App(){
   useEffect(()=>{
     if(!leads||!tasks||!leads.length||!tasks.length)return;
     const leadById=new Map(leads.map(l=>[l.id,l]));
-    const cleaned=tasks.filter(t=>isTaskStillValid(t,leadById,leads));
-    if(cleaned.length!==tasks.length){
+    let moved=false;
+    // Questionnaire check is due 2 days before the event (older tasks were created at 1 day before)
+    const cleaned=tasks.filter(t=>isTaskStillValid(t,leadById,leads)).map(t=>{
+      if(t.done||t.kind!=='questionnaire-verify'||!t.leadId)return t;
+      const lead=leadById.get(t.leadId);
+      const due=lead?.eventDate?addDays(new Date(lead.eventDate),-2):t.due;
+      if(due===t.due)return t;
+      moved=true;
+      return{...t,due,title:`שאלון הכנה לאירוע — ${lead.brideName||lead.name}`};
+    });
+    if(moved||cleaned.length!==tasks.length){
       setTasks(cleaned);
     }
   },[leads,tasks]);

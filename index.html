@@ -393,7 +393,7 @@ function ReminderBanner({leads}){
 // ── LEAD FORM (unified with event fields) ────────────────────────
 function LeadFormModal({lead,onSave,onClose}){
   const blank={name:'',source:'קמפיין מטא',answered:'',temp:'',eventType:'רווקות',status:'open',lostReason:'',
-    amount:0,advance:0,advanceDone:false,eventDate:'',location:'',notes:'',
+    amount:0,advance:0,advanceDone:false,eventDate:'',location:'',notes:'',followDate:'',
     createdAt:new Date().toISOString().split('T')[0],brideName:'',guideName:''};
   const [f,setF]=useState(()=>lead?{...lead,answered:normAnswered(lead.answered),temp:lead.temp||''}:blank);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -412,7 +412,7 @@ function LeadFormModal({lead,onSave,onClose}){
               <div className="fg"><label className="fl">מקור</label><select className="fi" value={f.source} onChange={e=>s('source',e.target.value)}>{SOURCES.map(x=><option key={x}>{x}</option>)}</select></div>
               <div className="fg"><label className="fl">סוג אירוע</label><select className="fi" value={f.eventType} onChange={e=>s('eventType',e.target.value)}>{EVENT_TYPES.map(x=><option key={x}>{x}</option>)}</select></div>
               <div className="fg"><label className="fl">סטטוס</label>
-                <select className="fi" value={f.status} onChange={e=>s('status',e.target.value)}>
+                <select className="fi" value={f.status} onChange={e=>{const v=e.target.value;setF(p=>({...p,status:v,followDate:v==='follow'&&!p.followDate?addDays(new Date(),2):p.followDate}))}}>
                   <option value="open">פתוח</option><option value="follow">פולו אפ</option>
                   <option value="closed">נסגר</option><option value="lost">לא נסגר</option>
                 </select>
@@ -444,6 +444,12 @@ function LeadFormModal({lead,onSave,onClose}){
               </select>
               {otherMode&&<input className="fi" style={{marginTop:8}} value={f.lostReason} onChange={e=>s('lostReason',e.target.value)} placeholder="כתבי סיבה..." autoFocus/>}
               <div style={{fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.5}}>הסיבה תופיע בניתוח המרות עם תובנות מותאמות לשיפור</div>
+            </div>}
+
+            {f.status==='follow'&&<div className="fg" style={{background:'var(--bluebg)',border:'1px solid oklch(90% .04 240)',borderRadius:8,padding:'12px 14px',marginTop:4}}>
+              <label className="fl" style={{color:'var(--blue)',fontWeight:700}}>מתי לעשות פולו אפ? *</label>
+              <input type="date" className="fi" value={f.followDate||''} onChange={e=>s('followDate',e.target.value)} required/>
+              <div style={{fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.5}}>בתאריך הזה תיווצר משימה ותקבלי התראה</div>
             </div>}
 
             {/* Basic event fields shown for all statuses */}
@@ -507,6 +513,7 @@ function LeadDetailModal({lead,onEdit,onClose}){
     ['הצעת מחיר',lead.amount?`₪${lead.amount.toLocaleString()}`:'—'],
   ];
   if(lead.status==='lost')rows.push(['למה לא נסגר',lead.lostReason||'—']);
+  if(lead.status==='follow')rows.push(['תאריך פולו אפ',lead.followDate?fmtFull(lead.followDate):'—']);
   return(
     <div className="modal-ov" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal" style={{maxWidth:500}}>
@@ -918,14 +925,15 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
 
     const statusChanged=!prev||prev.status!==lead.status;
     const eventDateChanged=!prev||prev.eventDate!==lead.eventDate;
+    const followDateChanged=!prev||(prev.followDate||'')!==(lead.followDate||'');
 
-    // Sync auto-tasks only when status or eventDate changed
-    if(statusChanged||(lead.status==='closed'&&eventDateChanged)){
+    // Sync auto-tasks only when status, eventDate or followDate changed
+    if(statusChanged||(lead.status==='closed'&&eventDateChanged)||(lead.status==='follow'&&followDateChanged)){
       const newTasks=[];
 
-      // Follow-up: single task at +2 days. Auto-renews when marked done (handled in Tasks component)
+      // Follow-up: single task on the chosen date (+2 days if none). Auto-renews when marked done (handled in Tasks component)
       if(lead.status==='follow'){
-        newTasks.push({id:uid(),leadId:lead.id,kind:'follow',title:`פולו אפ — ${lead.name}`,cat:'פולו אפ',due:addDays(new Date(),2),notes:'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס',done:false});
+        newTasks.push({id:uid(),leadId:lead.id,kind:'follow',title:`פולו אפ — ${lead.name}`,cat:'פולו אפ',due:lead.followDate||addDays(new Date(),2),notes:'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס',done:false});
       }
       // Event: 3 reminders (only if closed with a date)
       else if(lead.status==='closed'&&lead.eventDate){
@@ -1543,6 +1551,73 @@ function LoginScreen({error}){
   );
 }
 
+// ── APP INSTALL + PUSH NOTIFICATIONS ─────────────────────────────
+const VAPID_PUBLIC_KEY='BLBYGI3VXO-_kgb5UaNUjrR5eZdojuC55wMH4ZbUkfG6mv9OXGRvYned7WtrHIqSyl9wfxqprrMjvV46K9e6--w';
+const PUSH_SUPPORTED='serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+const swReady='serviceWorker' in navigator?navigator.serviceWorker.register('sw.js').catch(err=>{console.error('SW register error:',err);return null}):Promise.resolve(null);
+let installPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;window.dispatchEvent(new Event('installable'))});
+function b64ToBytes(b){const s=atob((b+'='.repeat((4-b.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(s,c=>c.charCodeAt(0))}
+
+// Sidebar controls: install the app + turn on task notifications for this device
+function DeviceControls({uid}){
+  const [canInstall,setCanInstall]=useState(!!installPrompt);
+  const [push,setPush]=useState('off'); // off | on | busy | denied
+  const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  useEffect(()=>{
+    const h=()=>setCanInstall(!!installPrompt);
+    window.addEventListener('installable',h);
+    return()=>window.removeEventListener('installable',h);
+  },[]);
+  useEffect(()=>{
+    if(!PUSH_SUPPORTED)return;
+    if(Notification.permission==='denied'){setPush('denied');return;}
+    swReady.then(reg=>reg&&reg.pushManager.getSubscription()).then(sub=>{if(sub&&Notification.permission==='granted')setPush('on')}).catch(()=>{});
+  },[]);
+
+  const install=async()=>{
+    if(!installPrompt)return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt=null;setCanInstall(false);
+  };
+  const enablePush=async()=>{
+    setPush('busy');
+    try{
+      const perm=await Notification.requestPermission();
+      if(perm!=='granted'){setPush(perm==='denied'?'denied':'off');return;}
+      const reg=await navigator.serviceWorker.ready;
+      const sub=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(VAPID_PUBLIC_KEY)});
+      // Store this device's subscription so the daily job can reach it
+      const docRef=firebase.firestore().doc(`users/${uid}/data/push`);
+      const snap=await docRef.get();
+      const json=sub.toJSON();
+      const others=((snap.exists&&snap.data().value)||[]).filter(x=>x.endpoint!==json.endpoint);
+      await docRef.set({value:[...others,json],updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+      setPush('on');
+      reg.showNotification('ההתראות פועלות ✓',{body:'מעכשיו תקבלי כל בוקר התראה על כל משימה של היום',icon:'icon-192.png',badge:'icon-192.png',dir:'rtl',lang:'he'});
+    }catch(err){
+      console.error('Push enable error:',err);
+      alert('לא הצלחתי להפעיל התראות: '+err.message);
+      setPush('off');
+    }
+  };
+
+  const btn={width:'100%',padding:'7px 10px',marginTop:8,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,color:'rgba(255,255,255,.8)',fontFamily:'Heebo',fontSize:11,cursor:'pointer',textAlign:'right'};
+  const note={marginTop:8,fontSize:10,lineHeight:1.5,color:'rgba(255,255,255,.4)'};
+  return <>
+    {canInstall&&<button style={btn} onClick={install}>📲 התקנת האפליקציה</button>}
+    {isIOS&&!standalone&&<div style={note}>להתקנה ולהתראות באייפון: בספארי ← שיתוף ← "הוסף למסך הבית", ואז לפתוח מהאייקון</div>}
+    {window.FIREBASE_READY&&uid&&PUSH_SUPPORTED&&<>
+      {push==='on'&&<div style={note}>🔔 התראות פעילות במכשיר הזה</div>}
+      {push==='denied'&&<div style={note}>🔕 ההתראות חסומות — יש לאפשר אותן בהגדרות המכשיר</div>}
+      {(push==='off'||push==='busy')&&<button style={btn} disabled={push==='busy'} onClick={enablePush}>🔔 {push==='busy'?'מפעיל...':'הפעלת התראות'}</button>}
+    </>}
+  </>;
+}
+
 function App(){
   // Auth state
   const [user,setUser]=useState(null);
@@ -1564,11 +1639,18 @@ function App(){
   const [tasks,setTasks]=useSyncedState(uid,'tasks',[],'biz_tasks');
   const [tweaks,setTweaks]=useSyncedState(uid,'tweaks',TWEAK_DEFAULTS,'biz_tweaks');
 
-  const [page,setPage]=useState(()=>localStorage.getItem('biz_page')||'dashboard');
+  const [page,setPage]=useState(()=>new URLSearchParams(location.search).get('page')||localStorage.getItem('biz_page')||'dashboard');
   const [showTweaks,setShowTweaks]=useState(false);
   const [sidebarOpen,setSidebarOpen]=useState(false);
 
   useEffect(()=>localStorage.setItem('biz_page',page),[page]);
+  // A tapped notification asks the already-open app to jump to a page
+  useEffect(()=>{
+    if(!('serviceWorker' in navigator))return;
+    const h=e=>{if(e.data?.page)setPage(e.data.page)};
+    navigator.serviceWorker.addEventListener('message',h);
+    return()=>navigator.serviceWorker.removeEventListener('message',h);
+  },[]);
   // Close sidebar on page change (mobile)
   useEffect(()=>setSidebarOpen(false),[page]);
 
@@ -1640,6 +1722,7 @@ function App(){
             <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:10}}>{user.displayName||user.email}</span>
             <span onClick={signOut} style={{cursor:'pointer',color:'rgba(255,255,255,.5)',fontSize:10}} title="התנתק">⎋</span>
           </div>}
+          <DeviceControls uid={uid}/>
         </div>
       </nav>
       <main className="main">

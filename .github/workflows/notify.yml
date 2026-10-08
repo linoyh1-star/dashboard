@@ -1,0 +1,40 @@
+name: Daily task notifications
+
+on:
+  schedule:
+    # 08:00 Israel time — 05:00 UTC in summer, 06:00 UTC in winter (the script picks the right one)
+    - cron: '0 5,6 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'now = send the real summary now, test = send a test notification'
+        type: choice
+        default: test
+        options: [test, now]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: scripts/notify
+        run: npm install --no-audit --no-fund
+
+      - name: Send notifications
+        working-directory: scripts/notify
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          MODE: ${{ inputs.mode || 'scheduled' }}
+        run: node send.js

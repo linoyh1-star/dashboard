@@ -18,6 +18,15 @@
   2. יום לפני האירוע — וידוא מילוי שאלונים
   3. יום אחרי האירוע — שליחת קבלה
 
+## התראות לטלפון
+
+כל בוקר ב-08:00 (שעון ישראל) נשלחת התראה נפרדת לכל משימה של היום, ועוד התראה אחת מרוכזת על משימות באיחור.
+
+- **בדשבורד** — כפתור "הפעלת התראות" בתחתית התפריט, פעם אחת בכל מכשיר
+- **שליחה** — `.github/workflows/notify.yml` מריץ את `scripts/notify/send.js`
+- **Secrets נדרשים ב-GitHub** — `FIREBASE_SERVICE_ACCOUNT` (קובץ ה-JSON של חשבון השירות) ו-`VAPID_PRIVATE_KEY`
+- **בדיקה** — ב-GitHub → Actions → "Daily task notifications" → Run workflow → `test`
+
 ## טכנולוגיה
 
 - React 18 + Babel Standalone

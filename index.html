@@ -480,7 +480,7 @@ function LeadFormModal({lead,onSave,onClose}){
               <div className="fg"><label className="fl">מקור</label><select className="fi" value={f.source} onChange={e=>s('source',e.target.value)}>{SOURCES.map(x=><option key={x}>{x}</option>)}</select></div>
               <div className="fg"><label className="fl">סוג אירוע</label><select className="fi" value={f.eventType} onChange={e=>s('eventType',e.target.value)}>{EVENT_TYPES.map(x=><option key={x}>{x}</option>)}</select></div>
               <div className="fg"><label className="fl">סטטוס</label>
-                <select className="fi" value={f.status} onChange={e=>{const v=e.target.value;setF(p=>({...p,status:v,followDate:v==='follow'&&!p.followDate?addDays(new Date(),2):p.followDate}))}}>
+                <select className="fi" value={f.status} onChange={e=>{const v=e.target.value;setF(p=>({...p,status:v,followDate:v==='follow'&&!p.followDate?addDays(new Date(),2):(p.followDate||'')}))}}>
                   <option value="open">פתוח</option><option value="follow">פולו אפ</option><option value="far">רחוק / בהמתנה</option>
                   <option value="closed">נסגר</option><option value="lost">לא נסגר</option>
                 </select>
@@ -1006,6 +1006,8 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
 
   const handleSave=(lead)=>{
     const prev=editL;
+    // Marked far while the event is already close: keep it far instead of auto-waking it to follow-up
+    if(lead.status==='far'&&lead.eventDate&&daysBetween(todayStr(),lead.eventDate)<=90)lead={...lead,farWoke:lead.eventDate};
     if(editL)onEdit(lead);else onAdd(lead);
 
     const changed=k=>!prev||(prev[k]||'')!==(lead[k]||'');
@@ -1612,7 +1614,8 @@ function useSyncedState(uid,docName,defaultValue,localKey){
     if(!firestoreReady.current)return; // wait for first remote read
     const docRef=firebase.firestore().doc(`users/${uid}/data/${docName}`);
     const t=setTimeout(()=>{
-      docRef.set({value:data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
+      // Firestore rejects undefined values and would drop the whole save — strip them
+      docRef.set({value:JSON.parse(JSON.stringify(data)),updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
         .catch(err=>console.error('Firestore save error:',err));
     },500);
     return()=>clearTimeout(t);
@@ -1882,7 +1885,7 @@ function App(){
     const newTasks=[];
     let dirty=false;
     const next=leads.map(l=>{
-      if(l.status==='far'&&l.eventDate&&l.eventDate>=today&&daysBetween(today,l.eventDate)<=90){
+      if(l.status==='far'&&l.eventDate&&l.eventDate>=today&&l.farWoke!==l.eventDate&&daysBetween(today,l.eventDate)<=90){
         dirty=true;
         newTasks.push({id:makeId(),leadId:l.id,kind:'follow',title:`פולו אפ — ${l.name}`,cat:'פולו אפ',due:today,notes:'האירוע בעוד פחות מ-3 חודשים — עכשיו הזמן לסגור',done:false});
         return{...l,status:'follow',followDate:today};

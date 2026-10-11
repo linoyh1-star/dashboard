@@ -11,7 +11,7 @@ const MODE=process.env.MODE||'scheduled'; // scheduled | now | test
 const il=(opts)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem',...opts}).format(new Date());
 const today=il({year:'numeric',month:'2-digit',day:'2-digit'}); // YYYY-MM-DD
 const hour=parseInt(il({hour:'2-digit',hour12:false}),10)%24;
-const weekday=il({weekday:'short'}); // Sun, Mon, ...
+const weekday=il({weekday:'short'}).slice(0,3); // Sun, Mon, ... (some locales add a trailing dot)
 const NURTURE_DAY='Sun';
 
 // One notification per task due today, plus a single reminder for everything overdue
@@ -40,7 +40,7 @@ async function main(){
   webpush.setVapidDetails('https://linoyh1-star.github.io/dashboard/',VAPID_PUBLIC_KEY,process.env.VAPID_PRIVATE_KEY);
   const db=admin.firestore();
 
-  let sent=0,failed=0,removed=0;
+  let sent=0,failed=0,removed=0,devices=0,pending=0;
   const users=await db.collection('users').listDocuments();
   for(const u of users){
     const pushRef=u.collection('data').doc('push');
@@ -48,10 +48,12 @@ async function main(){
     const [pushSnap,tasksSnap,logSnap]=await Promise.all([pushRef.get(),u.collection('data').doc('tasks').get(),logRef.get()]);
     const subs=(pushSnap.exists&&pushSnap.data().value)||[];
     if(!subs.length)continue;
+    devices+=subs.length;
     // Tags already delivered today — a notification goes out once, however many times the job runs
     const log=logSnap.exists&&logSnap.data().date===today?logSnap.data().tags||[]:[];
     const payloads=buildPayloads((tasksSnap.exists&&tasksSnap.data().value)||[]).filter(p=>MODE!=='scheduled'||!log.includes(p.tag));
     if(!payloads.length)continue;
+    pending+=payloads.length;
 
     const dead=new Set();
     const delivered=new Set();
@@ -75,7 +77,7 @@ async function main(){
       await pushRef.set({value:subs.filter(s=>!dead.has(s.endpoint)),updatedAt:admin.firestore.FieldValue.serverTimestamp()});
     }
   }
-  console.log(`Done (${MODE}): sent ${sent}, failed ${failed}, removed ${removed} expired devices`);
+  console.log(`Done (${MODE}, ${weekday} ${hour}:00): ${devices} devices, ${pending} notifications to send, sent ${sent}, failed ${failed}, removed ${removed} expired devices`);
   if(failed&&!sent)process.exit(1);
 }
 

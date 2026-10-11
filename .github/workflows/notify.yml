@@ -8,10 +8,10 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'now = send the real summary now, test = send a test notification'
+        description: 'test = test notification, now = send today again, scheduled = send only what was not sent yet today'
         type: choice
         default: test
-        options: [test, now]
+        options: [test, now, scheduled]
 
 permissions:
   contents: read

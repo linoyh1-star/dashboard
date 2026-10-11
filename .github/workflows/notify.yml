@@ -2,8 +2,9 @@ name: Daily task notifications
 
 on:
   schedule:
-    # 08:00 Israel time — 05:00 UTC in summer, 06:00 UTC in winter (the script picks the right one)
-    - cron: '0 5,6 * * *'
+    # Every half hour through the Israeli day. GitHub starts scheduled runs late, so the script
+    # sends from 08:00 Israel time and remembers what it already sent today.
+    - cron: '7,37 4-19 * * *'
   workflow_dispatch:
     inputs:
       mode:

@@ -32,8 +32,9 @@ function buildPayloads(tasks){
 }
 
 async function main(){
-  // Cron fires at two UTC hours to cover summer/winter time; only one of them is 08:00 in Israel
-  if(MODE==='scheduled'&&hour!==SEND_HOUR){console.log(`Israel hour is ${hour}, not ${SEND_HOUR} — skipping`);return;}
+  // GitHub runs scheduled jobs late (sometimes by hours), so the job runs often and
+  // sends whatever hasn't been sent yet today, from 08:00 Israel time onwards
+  if(MODE==='scheduled'&&hour<SEND_HOUR){console.log(`Israel hour is ${hour}, before ${SEND_HOUR} — skipping`);return;}
 
   admin.initializeApp({credential:admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))});
   webpush.setVapidDetails('https://linoyh1-star.github.io/dashboard/',VAPID_PUBLIC_KEY,process.env.VAPID_PRIVATE_KEY);
@@ -43,19 +44,24 @@ async function main(){
   const users=await db.collection('users').listDocuments();
   for(const u of users){
     const pushRef=u.collection('data').doc('push');
-    const [pushSnap,tasksSnap]=await Promise.all([pushRef.get(),u.collection('data').doc('tasks').get()]);
+    const logRef=u.collection('data').doc('pushLog');
+    const [pushSnap,tasksSnap,logSnap]=await Promise.all([pushRef.get(),u.collection('data').doc('tasks').get(),logRef.get()]);
     const subs=(pushSnap.exists&&pushSnap.data().value)||[];
     if(!subs.length)continue;
-    const payloads=buildPayloads((tasksSnap.exists&&tasksSnap.data().value)||[]);
+    // Tags already delivered today — a notification goes out once, however many times the job runs
+    const log=logSnap.exists&&logSnap.data().date===today?logSnap.data().tags||[]:[];
+    const payloads=buildPayloads((tasksSnap.exists&&tasksSnap.data().value)||[]).filter(p=>MODE!=='scheduled'||!log.includes(p.tag));
     if(!payloads.length)continue;
 
     const dead=new Set();
+    const delivered=new Set();
     for(const sub of subs){
       for(const payload of payloads){
         if(dead.has(sub.endpoint))break;
         try{
           await webpush.sendNotification(sub,JSON.stringify(payload));
           sent++;
+          delivered.add(payload.tag);
         }catch(err){
           // 404/410 = the device unsubscribed; drop it so we stop trying
           if(err.statusCode===404||err.statusCode===410)dead.add(sub.endpoint);
@@ -63,6 +69,7 @@ async function main(){
         }
       }
     }
+    if(MODE!=='test'&&delivered.size)await logRef.set({date:today,tags:[...new Set([...log,...delivered])]});
     if(dead.size){
       removed+=dead.size;
       await pushRef.set({value:subs.filter(s=>!dead.has(s.endpoint)),updatedAt:admin.firestore.FieldValue.serverTimestamp()});

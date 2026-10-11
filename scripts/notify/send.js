@@ -61,7 +61,8 @@ async function main(){
       for(const payload of payloads){
         if(dead.has(sub.endpoint))break;
         try{
-          await webpush.sendNotification(sub,JSON.stringify(payload));
+          // High urgency so Android delivers right away instead of batching while the phone sleeps
+          await webpush.sendNotification(sub,JSON.stringify(payload),{urgency:'high',TTL:43200});
           sent++;
           delivered.add(payload.tag);
         }catch(err){

@@ -821,6 +821,63 @@ function Dashboard({leads}){
 
 // ── AUTO TASKS ───────────────────────────────────────────────────
 const AUTO_TASK_KINDS=['follow','questionnaire-send','questionnaire-verify','receipt','bride-message'];
+// The automatic tasks a lead should have right now, by its status and dates
+function leadAutoTasks(lead){
+  const who=lead.brideName||lead.name;
+  const out=[];
+  const add=(kind,title,cat,due,notes)=>out.push({id:uid(),leadId:lead.id,kind,title,cat,due,notes,done:false});
+  // Follow-up: single task on the chosen date (+2 days if none). Auto-renews when marked done (handled in Tasks component)
+  if(lead.status==='follow'){
+    add('follow',`פולו אפ — ${lead.name}`,'פולו אפ',lead.followDate||addDays(new Date(),2),'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס');
+  }
+  else if(lead.status==='closed'){
+    if(lead.eventDate){
+      // Groom questionnaire is only relevant for bachelorette parties
+      if(lead.eventType==='רווקות')add('questionnaire-send',`שאלון לחתן — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),-7),'שלחי שאלון לחתן ובקשי מילוי פרטים לפני האירוע');
+      add('questionnaire-verify',`שאלון הכנה לאירוע — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),-2),'ודאי שכל השאלונים מולאו ויש לך את כל המידע לאירוע');
+      add('receipt',`שליחת קבלה — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),1),'שלחי קבלה ללקוחה לאחר האירוע');
+    }
+    if(WEDDING_TYPES.includes(lead.eventType)&&lead.weddingDate){
+      add('bride-message',`הודעה לכלה — ${who}`,'שיווק',addDays(new Date(lead.weddingDate),2),'יומיים אחרי החתונה — שלחי לכלה מזל טוב ושאלי איך היה');
+    }
+  }
+  // 'open', 'far' and 'lost' have no automatic tasks of their own
+  return out;
+}
+// Dated touchpoints for a hot lead that didn't close: [kind, due, title, notes]
+function nurturePlan(l){
+  const nextYear=(+l.eventDate.slice(0,4)+1)+l.eventDate.slice(4);
+  return[
+    ['how-was-it',addDays(new Date(l.eventDate),1),`איך היה? — ${l.name}`,'האירוע שלה היה אתמול — שאלי איך היה'],
+    ['next-year',addDays(new Date(nextYear),-60),`שנה אחרי — ${l.name}`,'בשנה שעברה היית תפוסה בתאריך שלה — הציעי לשמור לה את השנה'],
+  ];
+}
+// Start the task list over: only what the leads need from now on
+function rebuildTasks(leads){
+  const today=todayStr();
+  const cutoff=addDays(new Date(),-3);
+  const tasks=[];
+  const nextLeads=leads.map(l=>{
+    leadAutoTasks(l).forEach(t=>{
+      if(t.kind==='follow'){
+        // Stale follow-ups aren't brought back: no date on an old lead, or a date long gone
+        if(l.followDate?daysBetween(l.followDate,today)>14:daysBetween(l.createdAt||today,today)>30)return;
+        tasks.push({...t,due:l.followDate||today});
+      }else if(t.due>=cutoff)tasks.push(t);
+    });
+    if(l.status==='lost'&&l.temp==='hot'&&l.eventDate&&!l.nurtureOff){
+      const made=[];
+      nurturePlan(l).forEach(([kind,due,title,notes])=>{
+        if(due<today)return;
+        made.push(kind+':'+l.eventDate);
+        tasks.push({id:uid(),leadId:l.id,kind,forDate:l.eventDate,title,cat:'שיווק',due,notes,done:false});
+      });
+      return{...l,nurtureMade:made};
+    }
+    return l;
+  });
+  return{tasks,leads:nextLeads};
+}
 const EVENT_TASK_KINDS=['questionnaire-send','questionnaire-verify','receipt'];
 // Legacy title prefixes (for tasks created before leadId was added)
 const TASK_TITLE_PREFIXES={
@@ -1014,26 +1071,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
 
     // Sync auto-tasks only when something they depend on changed
     if(changed('status')||(lead.status==='closed'&&(changed('eventDate')||changed('weddingDate')||changed('eventType')))||(lead.status==='follow'&&changed('followDate'))){
-      const who=lead.brideName||lead.name;
-      const newTasks=[];
-      const add=(kind,title,cat,due,notes)=>newTasks.push({id:uid(),leadId:lead.id,kind,title,cat,due,notes,done:false});
-
-      // Follow-up: single task on the chosen date (+2 days if none). Auto-renews when marked done (handled in Tasks component)
-      if(lead.status==='follow'){
-        add('follow',`פולו אפ — ${lead.name}`,'פולו אפ',lead.followDate||addDays(new Date(),2),'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס');
-      }
-      else if(lead.status==='closed'){
-        if(lead.eventDate){
-          // Groom questionnaire is only relevant for bachelorette parties
-          if(lead.eventType==='רווקות')add('questionnaire-send',`שאלון לחתן — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),-7),'שלחי שאלון לחתן ובקשי מילוי פרטים לפני האירוע');
-          add('questionnaire-verify',`שאלון הכנה לאירוע — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),-2),'ודאי שכל השאלונים מולאו ויש לך את כל המידע לאירוע');
-          add('receipt',`שליחת קבלה — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),1),'שלחי קבלה ללקוחה לאחר האירוע');
-        }
-        if(WEDDING_TYPES.includes(lead.eventType)&&lead.weddingDate){
-          add('bride-message',`הודעה לכלה — ${who}`,'שיווק',addDays(new Date(lead.weddingDate),2),'יומיים אחרי החתונה — שלחי לכלה מזל טוב ושאלי איך היה');
-        }
-      }
-      // For 'open' and 'lost' — no new tasks (cleanup only)
+      const newTasks=leadAutoTasks(lead);
 
       // Atomic update: remove obsolete auto-tasks for this lead + add new ones
       setTasks(p=>{
@@ -1470,9 +1508,9 @@ function Analytics({leads}){
 }
 
 // ── TASKS PAGE ───────────────────────────────────────────────────
-function Tasks({tasks,setTasks,leads}){
+function Tasks({tasks,setTasks,leads,onRebuild}){
   const [showForm,setShowForm]=useState(false);
-  const [filter,setFilter]=useState('active');
+  const [filter,setFilter]=useState('week');
   const [form,setForm]=useState({title:'',cat:'פולו אפ',due:'',notes:'',done:false});
 
   const sf=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1494,25 +1532,26 @@ function Tasks({tasks,setTasks,leads}){
   });
   const del=id=>setTasks(p=>p.filter(t=>t.id!==id));
 
-  const now=new Date();
+  const today=todayStr();
+  const weekEnd=addDays(new Date(),7);
+  const day=t=>(t.due||'').slice(0,10);
   const active=tasks.filter(t=>!t.done);
-  const overdue=tasks.filter(t=>!t.done&&t.due&&new Date(t.due)<now);
-  const filtered=tasks.filter(t=>{
-    if(filter==='all')return true;
-    if(filter==='active')return !t.done;
-    if(filter==='done')return t.done;
-    // category filter: only active (done tasks appear only under "הושלמו")
-    return !t.done&&t.cat===filter;
-  });
+  const overdue=active.filter(t=>day(t)&&day(t)<today);
+  // "This week" = overdue, the next 7 days, and tasks with no date
+  const thisWeek=active.filter(t=>!day(t)||day(t)<=weekEnd);
+  const later=active.filter(t=>day(t)>weekEnd);
+  const filtered=filter==='done'?tasks.filter(t=>t.done):filter==='later'?later:thisWeek;
   // Lead of a task, only while still in play (closed leads don't need the hot/cold mark)
   const leadOf=t=>{const l=t.leadId?leads?.find(x=>x.id===t.leadId):null;return l&&l.status!=='closed'?l:null};
-  // Hot leads first, cold last (stable sort keeps the existing order within each group)
-  const sorted=filtered.map((t,i)=>({t,i,r:TEMP_RANK[leadOf(t)?.temp||'']})).sort((a,b)=>a.r-b.r||a.i-b.i).map(x=>x.t);
+  // Earliest date first (so overdue leads the list), undated last; hot leads break ties
+  const sorted=filtered.map(t=>({t,d:day(t)||'9999',r:TEMP_RANK[leadOf(t)?.temp||'']})).sort((a,b)=>a.d.localeCompare(b.d)||a.r-b.r).map(x=>x.t);
+  const groupOf=t=>t.done?'':!day(t)?'בלי תאריך':day(t)<today?'באיחור':day(t)===today?'היום':day(t)<=weekEnd?'השבוע הקרוב':'בהמשך';
+  const rebuild=()=>{if(confirm('למחוק את כל המשימות ולבנות מחדש רק את מה שרלוונטי מעכשיו? גם משימות שהוספת ידנית יימחקו.'))onRebuild()};
 
   return(
     <div>
       <div className="ph">
-        <div><div className="pt">משימות עסקיות</div><div className="ps">{active.length} פעילות{overdue.length?` · ${overdue.length} באיחור`:''}</div></div>
+        <div><div className="pt">משימות עסקיות</div><div className="ps">{thisWeek.length} לשבוע הקרוב{overdue.length?` · ${overdue.length} באיחור`:''}{later.length?` · ${later.length} בהמשך`:''}</div></div>
         <button className="btn btn-p" onClick={()=>setShowForm(p=>!p)}>+ משימה חדשה</button>
       </div>
       {showForm&&<div className="card" style={{marginBottom:16,padding:18}}>
@@ -1526,16 +1565,18 @@ function Tasks({tasks,setTasks,leads}){
         <div style={{display:'flex',gap:8}}><button className="btn btn-p btn-sm" onClick={addTask}>הוסף</button><button className="btn btn-s btn-sm" onClick={()=>setShowForm(false)}>ביטול</button></div>
       </div>}
       <div className="fb">
-        {['active','all','done',...TASK_CATS].map(f=>(
-          <button key={f} className={`btn btn-sm ${filter===f?'btn-p':'btn-s'}`} onClick={()=>setFilter(f)}>
-            {f==='active'?'פעילות':f==='all'?'הכל':f==='done'?'הושלמו':f}
-          </button>
+        {[['week','השבוע'],['later','בהמשך'],['done','הושלמו']].map(([f,l])=>(
+          <button key={f} className={`btn btn-sm ${filter===f?'btn-p':'btn-s'}`} onClick={()=>setFilter(f)}>{l}</button>
         ))}
+        <button className="btn btn-sm btn-g" style={{marginInlineStart:'auto',color:'var(--text3)'}} onClick={rebuild}>🧹 ניקוי ובנייה מחדש</button>
       </div>
       {filtered.length===0&&<div className="card" style={{padding:32,textAlign:'center',color:'var(--text3)',fontSize:13}}>אין משימות כאן</div>}
-      {sorted.map(t=>{
-        const isOD=!t.done&&t.due&&new Date(t.due)<now;
-        return <div key={t.id} className={`task-card ${t.done?'done-task':''}`}>
+      {sorted.map((t,i)=>{
+        const isOD=!t.done&&day(t)&&day(t)<today;
+        const g=groupOf(t);
+        return <React.Fragment key={t.id}>
+        {g&&(i===0||groupOf(sorted[i-1])!==g)&&<div style={{fontSize:12,fontWeight:700,color:g==='באיחור'?'var(--red)':'var(--text2)',margin:'14px 2px 6px'}}>{g}</div>}
+        <div className={`task-card ${t.done?'done-task':''}`}>
           <input type="checkbox" checked={t.done} onChange={()=>toggle(t.id)} style={{width:16,height:16,marginTop:2,cursor:'pointer',flexShrink:0}}/>
           <div style={{flex:1}}>
             <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
@@ -1546,7 +1587,8 @@ function Tasks({tasks,setTasks,leads}){
             {t.notes&&<div style={{fontSize:12,color:'var(--text2)',marginTop:3}}>{t.notes}</div>}
           </div>
           <button className="btn btn-icon btn-g" style={{color:'var(--red)'}} onClick={()=>del(t.id)}>✕</button>
-        </div>;
+        </div>
+        </React.Fragment>;
       })}
     </div>
   );
@@ -1841,7 +1883,7 @@ function App(){
   const [leads,setLeads,leadsLoaded]=useSyncedState(uid,'leads',typeof REAL_LEADS!=='undefined'?REAL_LEADS:[],'biz_leads3');
   const [tasks,setTasks,tasksLoaded]=useSyncedState(uid,'tasks',[],'biz_tasks');
   const [nurture,setNurture,nurtureLoaded]=useSyncedState(uid,'nurture',{week:'',ids:[],skipped:[]},'biz_nurture');
-  const [tweaks,setTweaks]=useSyncedState(uid,'tweaks',TWEAK_DEFAULTS,'biz_tweaks');
+  const [tweaks,setTweaks,tweaksLoaded]=useSyncedState(uid,'tweaks',TWEAK_DEFAULTS,'biz_tweaks');
 
   const [page,setPage]=useState(()=>new URLSearchParams(location.search).get('page')||localStorage.getItem('biz_page')||'dashboard');
   const [showTweaks,setShowTweaks]=useState(false);
@@ -1892,11 +1934,7 @@ function App(){
       }
       if(l.status==='lost'&&l.temp==='hot'&&l.eventDate&&!l.nurtureOff){
         const made=l.nurtureMade||[];
-        const nextYear=(+l.eventDate.slice(0,4)+1)+l.eventDate.slice(4);
-        const plan=[
-          ['how-was-it',addDays(new Date(l.eventDate),1),`איך היה? — ${l.name}`,'האירוע שלה היה אתמול — שאלי איך היה'],
-          ['next-year',addDays(new Date(nextYear),-60),`שנה אחרי — ${l.name}`,'בשנה שעברה היית תפוסה בתאריך שלה — הציעי לשמור לה את השנה'],
-        ];
+        const plan=nurturePlan(l);
         const added=[];
         plan.forEach(([kind,due,title,notes])=>{
           const key=kind+':'+l.eventDate;
@@ -1910,6 +1948,18 @@ function App(){
     });
     if(dirty){setLeads(next);setTasks(p=>[...newTasks,...p]);}
   },[leads,leadsLoaded,tasksLoaded]);
+
+  const rebuildAllTasks=()=>{
+    const r=rebuildTasks(leads);
+    setLeads(r.leads);
+    setTasks(r.tasks);
+  };
+  // One-time clean slate for the task list (requested 12.10.2026)
+  useEffect(()=>{
+    if(!leadsLoaded||!tasksLoaded||!tweaksLoaded||!leads.length||tweaks?.tasksReset===1)return;
+    rebuildAllTasks();
+    setTweaks(p=>({...p,tasksReset:1}));
+  },[leadsLoaded,tasksLoaded,tweaksLoaded,leads.length,tweaks?.tasksReset]);
 
   // Build this week's networking list once per week
   useEffect(()=>{
@@ -2002,7 +2052,7 @@ function App(){
         />}
         {page==='events'&&<EventsPage leads={leads} onEdit={l=>setLeads(p=>p.map(x=>x.id===l.id?l:x))}/>}
         {page==='analytics'&&<Analytics leads={leads}/>}
-        {page==='tasks'&&<Tasks tasks={tasks} setTasks={setTasks} leads={leads}/>}
+        {page==='tasks'&&<Tasks tasks={tasks} setTasks={setTasks} leads={leads} onRebuild={rebuildAllTasks}/>}
         {page==='nurture'&&<NurturePage leads={leads} setLeads={setLeads} batch={nurture} setBatch={setNurture} tweaks={tweaks} setTweaks={setTweaks}/>}
       </main>
       {showTweaks&&<div className="tweaks-panel">

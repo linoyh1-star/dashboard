@@ -210,6 +210,22 @@ tr.row-click{cursor:pointer}
 </head>
 <body>
 <div id="root"></div>
+<script>
+// If the app crashes to a blank screen, show what happened instead of nothing
+window.addEventListener('error',function(e){
+  setTimeout(function(){
+    var root=document.getElementById('root');
+    if(!root||root.childElementCount)return;
+    var box=document.createElement('div');
+    box.dir='rtl';
+    box.style.cssText='max-width:420px;margin:60px auto;padding:24px;font-family:Heebo,sans-serif;text-align:center;line-height:1.7';
+    var h=document.createElement('div');h.style.cssText='font-size:18px;font-weight:700;margin-bottom:8px';h.textContent='משהו השתבש בטעינה';
+    var m=document.createElement('div');m.dir='ltr';m.style.cssText='font-size:12px;color:#888;word-break:break-word;margin-bottom:16px';m.textContent=(e&&e.message)||'Unknown error';
+    var b=document.createElement('button');b.textContent='טעינה מחדש';b.style.cssText='padding:10px 20px;border:0;border-radius:8px;background:#1a1714;color:#fff;font-size:14px';b.onclick=function(){location.reload()};
+    box.appendChild(h);box.appendChild(m);box.appendChild(b);root.appendChild(box);
+  },300);
+});
+</script>
 <script type="text/babel">
 const {useState,useEffect,useRef,useMemo} = React;
 
@@ -302,6 +318,8 @@ function getYears(leads){
 // ── NURTURE ("stay top of mind") ─────────────────────────────────
 function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function todayStr(){return ymd(new Date())}
+// Imported leads can carry junk in date fields; date math on those throws
+function isYmd(d){return typeof d==='string'&&/^\d{4}-\d{2}-\d{2}/.test(d)&&!isNaN(new Date(d))}
 // uid() under another name — inside App, "uid" is the signed-in user id
 function makeId(){return uid()}
 function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000)}
@@ -828,16 +846,16 @@ function leadAutoTasks(lead){
   const add=(kind,title,cat,due,notes)=>out.push({id:uid(),leadId:lead.id,kind,title,cat,due,notes,done:false});
   // Follow-up: single task on the chosen date (+2 days if none). Auto-renews when marked done (handled in Tasks component)
   if(lead.status==='follow'){
-    add('follow',`פולו אפ — ${lead.name}`,'פולו אפ',lead.followDate||addDays(new Date(),2),'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס');
+    add('follow',`פולו אפ — ${lead.name}`,'פולו אפ',isYmd(lead.followDate)?lead.followDate:addDays(new Date(),2),'חזרי ללקוחה — שלחי הודעה ובדקי מה הסטטוס');
   }
   else if(lead.status==='closed'){
-    if(lead.eventDate){
+    if(isYmd(lead.eventDate)){
       // Groom questionnaire is only relevant for bachelorette parties
       if(lead.eventType==='רווקות')add('questionnaire-send',`שאלון לחתן — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),-7),'שלחי שאלון לחתן ובקשי מילוי פרטים לפני האירוע');
       add('questionnaire-verify',`שאלון הכנה לאירוע — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),-2),'ודאי שכל השאלונים מולאו ויש לך את כל המידע לאירוע');
       add('receipt',`שליחת קבלה — ${who}`,'אירוע קרוב',addDays(new Date(lead.eventDate),1),'שלחי קבלה ללקוחה לאחר האירוע');
     }
-    if(WEDDING_TYPES.includes(lead.eventType)&&lead.weddingDate){
+    if(WEDDING_TYPES.includes(lead.eventType)&&isYmd(lead.weddingDate)){
       add('bride-message',`הודעה לכלה — ${who}`,'שיווק',addDays(new Date(lead.weddingDate),2),'יומיים אחרי החתונה — שלחי לכלה מזל טוב ושאלי איך היה');
     }
   }
@@ -861,11 +879,12 @@ function rebuildTasks(leads){
     leadAutoTasks(l).forEach(t=>{
       if(t.kind==='follow'){
         // Stale follow-ups aren't brought back: no date on an old lead, or a date long gone
-        if(l.followDate?daysBetween(l.followDate,today)>14:daysBetween(l.createdAt||today,today)>30)return;
-        tasks.push({...t,due:l.followDate||today});
+        const fd=isYmd(l.followDate)?l.followDate:'';
+        if(fd?daysBetween(fd,today)>14:!(daysBetween(l.createdAt||today,today)<=30))return;
+        tasks.push({...t,due:fd||today});
       }else if(t.due>=cutoff)tasks.push(t);
     });
-    if(l.status==='lost'&&l.temp==='hot'&&l.eventDate&&!l.nurtureOff){
+    if(l.status==='lost'&&l.temp==='hot'&&isYmd(l.eventDate)&&!l.nurtureOff){
       const made=[];
       nurturePlan(l).forEach(([kind,due,title,notes])=>{
         if(due<today)return;
@@ -1534,7 +1553,7 @@ function Tasks({tasks,setTasks,leads,onRebuild}){
 
   const today=todayStr();
   const weekEnd=addDays(new Date(),7);
-  const day=t=>(t.due||'').slice(0,10);
+  const day=t=>String(t.due||'').slice(0,10);
   const active=tasks.filter(t=>!t.done);
   const overdue=active.filter(t=>day(t)&&day(t)<today);
   // "This week" = overdue, the next 7 days, and tasks with no date
@@ -1909,7 +1928,7 @@ function App(){
     const cleaned=tasks.filter(t=>isTaskStillValid(t,leadById,leads)).map(t=>{
       if(t.done||t.kind!=='questionnaire-verify'||!t.leadId)return t;
       const lead=leadById.get(t.leadId);
-      const due=lead?.eventDate?addDays(new Date(lead.eventDate),-2):t.due;
+      const due=isYmd(lead?.eventDate)?addDays(new Date(lead.eventDate),-2):t.due;
       if(due===t.due)return t;
       moved=true;
       return{...t,due,title:`שאלון הכנה לאירוע — ${lead.brideName||lead.name}`};
@@ -1927,12 +1946,12 @@ function App(){
     const newTasks=[];
     let dirty=false;
     const next=leads.map(l=>{
-      if(l.status==='far'&&l.eventDate&&l.eventDate>=today&&l.farWoke!==l.eventDate&&daysBetween(today,l.eventDate)<=90){
+      if(l.status==='far'&&isYmd(l.eventDate)&&l.eventDate>=today&&l.farWoke!==l.eventDate&&daysBetween(today,l.eventDate)<=90){
         dirty=true;
         newTasks.push({id:makeId(),leadId:l.id,kind:'follow',title:`פולו אפ — ${l.name}`,cat:'פולו אפ',due:today,notes:'האירוע בעוד פחות מ-3 חודשים — עכשיו הזמן לסגור',done:false});
         return{...l,status:'follow',followDate:today};
       }
-      if(l.status==='lost'&&l.temp==='hot'&&l.eventDate&&!l.nurtureOff){
+      if(l.status==='lost'&&l.temp==='hot'&&isYmd(l.eventDate)&&!l.nurtureOff){
         const made=l.nurtureMade||[];
         const plan=nurturePlan(l);
         const added=[];
@@ -1957,7 +1976,7 @@ function App(){
   // One-time clean slate for the task list (requested 12.10.2026)
   useEffect(()=>{
     if(!leadsLoaded||!tasksLoaded||!tweaksLoaded||!leads.length||tweaks?.tasksReset===1)return;
-    rebuildAllTasks();
+    try{rebuildAllTasks()}catch(err){console.error('Task rebuild failed:',err)}
     setTweaks(p=>({...p,tasksReset:1}));
   },[leadsLoaded,tasksLoaded,tweaksLoaded,leads.length,tweaks?.tasksReset]);
 

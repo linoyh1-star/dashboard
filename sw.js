@@ -1,5 +1,6 @@
 // Service worker: makes the dashboard installable and shows push notifications.
-// No fetch handler on purpose — the app always loads fresh from the network.
+// The only fetch handling: always take the page itself from the network, so a fix
+// reaches the phone right away instead of waiting for the browser cache to expire.
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
 
@@ -25,4 +26,9 @@ self.addEventListener('notificationclick',e=>{
     if(open){open.postMessage({page});return open.focus();}
     return self.clients.openWindow('./?page='+page);
   }));
+});
+
+self.addEventListener('fetch',e=>{
+  if(e.request.mode!=='navigate')return;
+  e.respondWith(fetch(e.request,{cache:'no-store'}).catch(()=>fetch(e.request)));
 });

@@ -952,7 +952,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
   const [fSource,setFSource]=useState('all');
   const [fType,setFType]=useState('all');
   const [fYear,setFYear]=useState(cy);
-  const [fMonth,setFMonth]=useState('all');
+  const [fMonth,setFMonth]=useState([]);
   const [fAns,setFAns]=useState('all');
   const [fTemp,setFTemp]=useState('all');
   const [showForm,setShowForm]=useState(false);
@@ -1073,7 +1073,7 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
     if(fSource!=='all'&&l.source!==fSource)return false;
     if(fType!=='all'&&l.eventType!==fType)return false;
     if(fYear!=='all'&&!l.createdAt?.startsWith(fYear))return false;
-    if(fMonth!=='all'&&l.createdAt?.slice(5,7)!==fMonth)return false;
+    if(fMonth.length&&!fMonth.includes(l.createdAt?.slice(5,7)))return false;
     if(fAns!=='all'&&normAnswered(l.answered)!==(fAns==='none'?'':fAns))return false;
     if(fTemp!=='all'&&(l.temp||'')!==(fTemp==='none'?'':fTemp))return false;
     const q=search.toLowerCase();
@@ -1135,10 +1135,8 @@ function LeadsPage({leads,setTasks,onAdd,onEdit,onDelete,onDeleteMany}){
         <select className="fi" style={{width:110}} value={fYear} onChange={e=>setFYear(e.target.value)}>
           <option value="all">כל השנים</option>{years.map(y=><option key={y} value={String(y)}>{y}</option>)}
         </select>
-        <select className="fi" style={{width:130}} value={fMonth} onChange={e=>setFMonth(e.target.value)}>
-          <option value="all">כל החודשים</option>
-          {MONTHS.map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
-        </select>
+        <MultiSelect width={130} allLabel="כל החודשים" selected={fMonth} onChange={setFMonth}
+          options={MONTHS.map((m,i)=>({value:String(i+1).padStart(2,'0'),label:m}))}/>
         <MultiSelect width={140} allLabel="כל הסטטוסים" selected={fStatus} onChange={setFStatus}
           options={[{value:'open',label:'פתוח'},{value:'follow',label:'פולו אפ'},{value:'far',label:'רחוק'},{value:'closed',label:'נסגר'},{value:'lost',label:'לא נסגר'}]}/>
         <select className="fi" style={{width:140}} value={fSource} onChange={e=>setFSource(e.target.value)}>
@@ -1823,6 +1821,21 @@ let installPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;window.dispatchEvent(new Event('installable'))});
 function b64ToBytes(b){const s=atob((b+'='.repeat((4-b.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(s,c=>c.charCodeAt(0))}
 
+// Store this device's subscription so the daily job can reach it. If the job already dropped
+// it (the push address expired), the browser's copy is dead too — swap it for a fresh one.
+async function saveSubscription(reg,uid){
+  const docRef=firebase.firestore().doc(`users/${uid}/data/push`);
+  const snap=await docRef.get();
+  const saved=(snap.exists&&snap.data().value)||[];
+  let sub=await reg.pushManager.getSubscription();
+  if(sub&&!saved.some(x=>x.endpoint===sub.endpoint)){await sub.unsubscribe().catch(()=>{});sub=null;}
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(VAPID_PUBLIC_KEY)});
+  const json=sub.toJSON();
+  if(saved.some(x=>x.endpoint===json.endpoint))return true;
+  await docRef.set({value:[...saved,json],updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  return true;
+}
+
 // Sidebar controls: install the app + turn on task notifications for this device
 function DeviceControls({uid}){
   const [canInstall,setCanInstall]=useState(!!installPrompt);
@@ -1838,8 +1851,11 @@ function DeviceControls({uid}){
   useEffect(()=>{
     if(!PUSH_SUPPORTED)return;
     if(Notification.permission==='denied'){setPush('denied');return;}
-    swReady.then(reg=>reg&&reg.pushManager.getSubscription()).then(sub=>{if(sub&&Notification.permission==='granted')setPush('on')}).catch(()=>{});
-  },[]);
+    if(Notification.permission!=='granted'||!uid||!window.FIREBASE_READY)return;
+    // Re-register on every open: the daily job drops a device whose push address expired,
+    // and without this the phone kept saying "on" while nothing was sent
+    swReady.then(reg=>reg&&saveSubscription(reg,uid)).then(ok=>{if(ok)setPush('on')}).catch(err=>console.error('Push resync error:',err));
+  },[uid]);
 
   const install=async()=>{
     if(!installPrompt)return;
@@ -1853,13 +1869,7 @@ function DeviceControls({uid}){
       const perm=await Notification.requestPermission();
       if(perm!=='granted'){setPush(perm==='denied'?'denied':'off');return;}
       const reg=await navigator.serviceWorker.ready;
-      const sub=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(VAPID_PUBLIC_KEY)});
-      // Store this device's subscription so the daily job can reach it
-      const docRef=firebase.firestore().doc(`users/${uid}/data/push`);
-      const snap=await docRef.get();
-      const json=sub.toJSON();
-      const others=((snap.exists&&snap.data().value)||[]).filter(x=>x.endpoint!==json.endpoint);
-      await docRef.set({value:[...others,json],updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+      await saveSubscription(reg,uid);
       setPush('on');
       reg.showNotification('ההתראות פועלות ✓',{body:'מעכשיו תקבלי כל בוקר התראה על כל משימה של היום',icon:'icon-192.png',badge:'icon-192.png',dir:'rtl',lang:'he'});
     }catch(err){

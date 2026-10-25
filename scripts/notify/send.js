@@ -78,6 +78,8 @@ async function main(){
       await pushRef.set({value:subs.filter(s=>!dead.has(s.endpoint)),updatedAt:admin.firestore.FieldValue.serverTimestamp()});
     }
   }
+  // Shows up as a yellow warning on the run, so a phone that silently dropped off is easy to spot
+  if(!devices)console.log('::warning::No device is registered for notifications — open the dashboard on the phone to re-register it');
   console.log(`Done (${MODE}, ${weekday} ${hour}:00): ${devices} devices, ${pending} notifications to send, sent ${sent}, failed ${failed}, removed ${removed} expired devices`);
   if(failed&&!sent)process.exit(1);
 }
